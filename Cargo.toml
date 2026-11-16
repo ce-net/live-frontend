@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = ["crates/lf-contract", "crates/fe-chain", "crates/fe-gate", "crates/fe-runtime", "crates/fe-host", "crates/sim-wasm", "crates/fe-node", "crates/lf", "cells/*/api", "cells/*/cell"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Leif Rydenfalk"]
+repository = "https://github.com/ce-net/live-frontend"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize", "fast"] }
+base64 = "0.22"
+# The open crates of ce-net/live-refs, pinned by rev (Apache-2.0).
+wire-lite = { git = "https://github.com/ce-net/live-refs", rev = "b1f0aaba7ef13c03a607b6a26449f0564920be76" }
+sim-mesh = { git = "https://github.com/ce-net/live-refs", rev = "b1f0aaba7ef13c03a607b6a26449f0564920be76" }
+live-proof = { git = "https://github.com/ce-net/live-refs", rev = "b1f0aaba7ef13c03a607b6a26449f0564920be76" }
+ce-ref-id = { git = "https://github.com/ce-net/live-refs", rev = "b1f0aaba7ef13c03a607b6a26449f0564920be76" }
+lf-contract = { path = "crates/lf-contract" }
+fe-chain = { path = "crates/fe-chain" }
+fe-gate = { path = "crates/fe-gate" }
+fe-runtime = { path = "crates/fe-runtime" }
+fe-host = { path = "crates/fe-host" }
+notes-api = { path = "cells/notes/api" }
+status-api = { path = "cells/status/api" }
+trend-api = { path = "cells/trend/api" }
+faults-api = { path = "cells/faults/api" }
+ops-api = { path = "cells/ops/api" }
+systems-api = { path = "cells/systems/api" }
+notes-cell = { path = "cells/notes/cell" }
+status-cell = { path = "cells/status/cell" }
+trend-cell = { path = "cells/trend/cell" }
+faults-cell = { path = "cells/faults/cell" }
+ops-cell = { path = "cells/ops/cell" }
+systems-cell = { path = "cells/systems/cell" }
+
+[profile.dev]
+debug = 0
+[profile.release]
+debug = 0
+codegen-units = 16
+[profile.wasm]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"

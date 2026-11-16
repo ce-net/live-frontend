@@ -1,0 +1,12 @@
+[package]
+name = "trend-api"
+description = "The typed contract of the trend cell (both halves: ops and the ui { } view)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+wire-lite.workspace = true
+lf-contract.workspace = true
+serde_json.workspace = true

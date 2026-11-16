@@ -1,0 +1,55 @@
+{
+  "note": "What runs where. The shell has no list of cells: this file is only the operator's plan for the sim nodes (the page learns everything from fe.manifest). Both the native controller (cargo cell sim|dev|record) and the in-browser sim carry it out.",
+  "bundles": [
+    {"view": "systems.card", "version": "1.0", "dir": "systems", "entry": "../cells/systems/ui/src/card.ts"},
+    {"view": "notes.board", "version": "1.0", "dir": "notes", "entry": "../cells/notes/ui/src/board-1.0.ts"},
+    {"view": "notes.board", "version": "1.1", "dir": "notes", "entry": "../cells/notes/ui/src/board-1.1.ts"},
+    {"view": "notes.board", "version": "2.0", "dir": "notes", "entry": "../cells/notes/ui/src/board-2.0.ts"},
+    {"view": "status.panel", "version": "1.0", "dir": "status", "entry": "../cells/status/ui/src/panel.ts"},
+    {"view": "trend.chart", "version": "1.0", "dir": "trend", "entry": "../cells/trend/ui/src/chart.ts"},
+    {"view": "timeline.view", "version": "1.0", "dir": "timeline", "entry": "../cells/timeline/ui/src/timeline.ts"},
+    {"view": "cap.inspect", "version": "1.0", "dir": "inspect", "entry": "../cells/inspect/ui/src/inspect.ts"},
+    {"view": "faults.panel", "version": "1.0", "dir": "faults", "entry": "../cells/faults/ui/src/panel.ts"},
+    {"view": "ops.panel", "version": "1.0", "dir": "ops", "entry": "../cells/ops/ui/src/panel.ts", "private": true}
+  ],
+  "base": [
+    {"op": "install", "node": "a", "view": "systems.card", "api": "systems.catalog", "version": "1.0", "dir": "systems", "instance": "live-frontend", "peers": ["a", "b"]},
+    {"op": "install", "node": "b", "view": "systems.card", "api": "systems.catalog", "version": "1.0", "dir": "systems", "instance": "live-frontend", "peers": ["a", "b"]},
+    {"op": "install", "node": "a", "view": "systems.card", "api": "systems.catalog", "version": "1.0", "dir": "systems", "instance": "live-shop", "peers": ["a", "b"]},
+    {"op": "install", "node": "b", "view": "systems.card", "api": "systems.catalog", "version": "1.0", "dir": "systems", "instance": "live-refs", "peers": ["a", "b"]},
+    {"op": "install", "node": "a", "view": "notes.board", "api": "notes", "version": "1.0", "dir": "notes", "peers": ["a", "b", "c"]},
+    {"op": "install", "node": "b", "view": "notes.board", "api": "notes", "version": "1.0", "dir": "notes", "peers": ["a", "b", "c"]},
+    {"op": "install", "node": "c", "view": "notes.board", "api": "notes", "version": "1.0", "dir": "notes", "peers": ["a", "b", "c"]},
+    {"op": "install", "node": "a", "view": "status.panel", "api": "status", "version": "1.0", "dir": "status", "peers": ["a", "b", "c"]},
+    {"op": "install", "node": "b", "view": "status.panel", "api": "status", "version": "1.0", "dir": "status", "peers": ["a", "b", "c"]},
+    {"op": "install", "node": "c", "view": "status.panel", "api": "status", "version": "1.0", "dir": "status", "peers": ["a", "b", "c"]},
+    {"op": "install", "node": "c", "view": "trend.chart", "api": "trend", "version": "1.0", "dir": "trend", "peers": ["c"]},
+    {"op": "install", "node": "d", "view": "timeline.view", "api": "fe.history", "version": "1.0", "dir": "timeline", "peers": ["d"]},
+    {"op": "install", "node": "d", "view": "cap.inspect", "api": "fe.explain", "version": "1.0", "dir": "inspect", "peers": ["d"]},
+    {"op": "install", "node": "a", "view": "ops.panel", "api": "ops", "version": "1.0", "dir": "ops", "peers": ["a"]}
+  ],
+  "actions": {
+    "start-faults": [
+      {"op": "install", "node": "b", "view": "faults.panel", "api": "faults", "version": "1.0", "dir": "faults", "peers": ["b"]}
+    ],
+    "deploy-notes-1.1": [
+      {"op": "install", "node": "c", "view": "notes.board", "api": "notes", "version": "1.1", "dir": "notes", "peers": ["a", "b", "c"]},
+      {"op": "wait", "ms": 3000},
+      {"op": "install", "node": "a", "view": "notes.board", "api": "notes", "version": "1.1", "dir": "notes", "peers": ["a", "b", "c"]},
+      {"op": "wait", "ms": 1500},
+      {"op": "install", "node": "b", "view": "notes.board", "api": "notes", "version": "1.1", "dir": "notes", "peers": ["a", "b", "c"]}
+    ],
+    "deploy-notes-2.0": [
+      {"op": "install", "node": "a", "view": "notes.board", "api": "notes", "version": "2.0", "dir": "notes", "peers": ["a", "b", "c"]},
+      {"op": "install", "node": "b", "view": "notes.board", "api": "notes", "version": "2.0", "dir": "notes", "peers": ["a", "b", "c"]},
+      {"op": "install", "node": "c", "view": "notes.board", "api": "notes", "version": "2.0", "dir": "notes", "peers": ["a", "b", "c"]},
+      {"op": "install", "node": "a", "view": "notes.board", "api": "notes", "version": "1.1", "dir": "notes", "peers": ["a", "b", "c"], "until_ms": 20000, "label": "1 (leaving)"},
+      {"op": "install", "node": "b", "view": "notes.board", "api": "notes", "version": "1.1", "dir": "notes", "peers": ["a", "b", "c"], "until_ms": 20000, "label": "1 (leaving)"},
+      {"op": "install", "node": "c", "view": "notes.board", "api": "notes", "version": "1.1", "dir": "notes", "peers": ["a", "b", "c"], "until_ms": 20000, "label": "1 (leaving)"}
+    ],
+    "tamper-c": [{"op": "tamper", "node": "c", "view": "notes.board"}],
+    "untamper-c": [{"op": "untamper", "node": "c", "view": "notes.board"}],
+    "stop-b": [{"op": "kill", "node": "b"}],
+    "start-b": [{"op": "start", "node": "b"}]
+  }
+}

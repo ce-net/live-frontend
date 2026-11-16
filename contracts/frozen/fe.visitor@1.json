@@ -1,0 +1,42 @@
+{
+  "api": "fe.visitor",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Join",
+      "req": "JoinReq",
+      "resp": "Joined",
+      "right": "fe.visitor:join"
+    },
+    {
+      "id": 2,
+      "kw": [],
+      "name": "Revoke",
+      "req": "()",
+      "resp": "ChainState",
+      "right": "fe.visitor:revoke-own"
+    },
+    {
+      "id": 3,
+      "kw": [],
+      "name": "State",
+      "req": "()",
+      "resp": "ChainState",
+      "right": "fe.visitor:state"
+    },
+    {
+      "id": 4,
+      "kw": [],
+      "name": "Spend",
+      "req": "SpendReq",
+      "resp": "fe_gate::Ticket",
+      "right": "fe.visitor:spend"
+    }
+  ],
+  "schema": "77d2fb8577d0249a",
+  "types": "pub struct JoinReq { pub holder: String, pub pow: String }\npub struct Joined\n{ pub chain: fe_chain::Chain, pub id: String, pub until: u64, pub uses: u32 }\npub struct SpendReq { pub chain: String, pub call_sha: String }\npub struct ChainState\n{\n    pub id: String, pub uses_left: u32, pub uses: u32, pub until: u64, pub\n    revoked: bool\n}",
+  "views": []
+}

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A frontend made of cells</title>
+<meta name="description" content="A live system on ce-net: a page that is not one program. Every panel is a UI cell with its own backend, contract, node and version, discovered at run time.">
+<script>try{if(localStorage.getItem("ce-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%221%22 y=%221%22 width=%226%22 height=%226%22 fill=%22%23b8730a%22/%3E%3Crect x=%229%22 y=%221%22 width=%226%22 height=%226%22 fill=%22%23888%22/%3E%3Crect x=%221%22 y=%229%22 width=%226%22 height=%226%22 fill=%22%23888%22/%3E%3Crect x=%229%22 y=%229%22 width=%226%22 height=%226%22 fill=%22%23b8730a%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/components.css">
+<link rel="stylesheet" href="page.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="crumb">CE-NET / LIVE SYSTEMS / <b>FRONTEND</b></span><h1>A frontend made of cells</h1></div>
+  <div class="chips"><span id="mode" class="chip">starting</span><span id="chain" class="chip">no chain</span><button id="theme" class="btn quiet" aria-label="switch theme">Theme</button></div>
+</header>
+<p class="lede">This page starts empty. Each panel below is a UI cell with its own backend cell, contract, node and version. Cells announce themselves; the capability chain this browser holds decides which of them it is ever sent. A cell can be replaced, replicated, refused or revoked while the rest of the page keeps running.</p>
+<main class="grid">
+  <aside class="left">
+    <h2 class="label">Nodes</h2><div id="nodes"></div>
+    <h2 class="label">Controls</h2><div id="controls" class="controls"></div>
+    <div id="said" class="said" role="status"></div>
+  </aside>
+  <section class="centre">
+    <div id="empty" class="empty">No cells yet. Join to get a visitor chain; the page fills as cells are discovered.</div>
+    <div id="r-cards" class="cards"></div>
+    <div id="r-main" class="mainr"></div>
+  </section>
+  <aside class="right"><div id="r-side"></div></aside>
+  <section class="bottom">
+    <div id="r-bottom"></div>
+    <div id="proof" class="proof"></div>
+  </section>
+</main>
+<footer class="foot"><span>Apache-2.0</span><a href="https://github.com/ce-net/live-frontend">Code</a><a href="https://ce-net.github.io/demos/">Live systems on ce-net</a></footer>
+<script type="module" src="page.js"></script>
+</body>
+</html>

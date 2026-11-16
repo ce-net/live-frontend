@@ -1,0 +1,18 @@
+{
+ "from": "https://github.com/ce-net/ui-cells",
+ "commit": "103703220a8554d07af1ed6a1eea5ef0e5a72090",
+ "path": "ts/",
+ "license": "Apache-2.0 (fonts: OFL, see kit/fonts/OFL.txt)",
+ "sha256": {
+  "kit/components.css": "8eabe96c8d01dd471caa23c47861a59e131dd3ffb47693127841676c74bd48d1",
+  "kit/dom.ts": "1938b87257f41faa6b890bb291bfc294c78610a0b4cb1db8ca319a15d5e4c480",
+  "kit/faces.ts": "9e82512e91bc5cb4f00eb9be6f662deccbb31420ddb0ac6268a81a02ae156018",
+  "kit/fonts/OFL.txt": "c683bfbcc7e087f5d37a54ef628f10387c451a83ddc459b151403a164ac46c90",
+  "kit/fonts/geist.woff2": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1",
+  "kit/fonts/jetbrainsmono.woff2": "83c005d49d8a6a50474c73a5a36ac0468076e9c4a29da7bdb14995d80560a5be",
+  "kit/fonts/michroma.woff2": "754fdb31c9906e82cf9c0ecb1d0b528073818fc2c418a39932c83a34cca027b6",
+  "kit/tokens.css": "f96b5ebd2607f7c51fb1530d87c94956b4ad4742d35e442aa372517ad902faaa",
+  "ui-host.ts": "3f8f351e59eb56a4269d3a96225784ef6931d924ba600ccc1a42e18db4aaaef1",
+  "ui-rt.ts": "d51eb97b492514255d1043d492f5084ea1543313aa1941578d09c4d64b396cac"
+ }
+}

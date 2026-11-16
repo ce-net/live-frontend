@@ -1,0 +1,18 @@
+{
+  "api": "fe.serve",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Fetch",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "fe.serve:fetch"
+    }
+  ],
+  "schema": "d9d77d62ba3ad5d4",
+  "types": "pub struct ByHash { pub sha256: String }\npub struct Bundle { pub sha256: String, pub b64: String }",
+  "views": []
+}

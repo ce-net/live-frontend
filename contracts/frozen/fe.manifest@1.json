@@ -1,0 +1,42 @@
+{
+  "api": "fe.manifest",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Announce",
+      "req": "Signed",
+      "resp": "u64",
+      "right": "fe.manifest:announce"
+    },
+    {
+      "id": 2,
+      "kw": [],
+      "name": "Resolve",
+      "req": "()",
+      "resp": "Resolved",
+      "right": "fe.manifest:resolve"
+    },
+    {
+      "id": 3,
+      "kw": [],
+      "name": "Report",
+      "req": "Complaint",
+      "resp": "()",
+      "right": "fe.manifest:report"
+    },
+    {
+      "id": 4,
+      "kw": [],
+      "name": "All",
+      "req": "()",
+      "resp": "Vec<Entry>",
+      "right": "fe.manifest:all"
+    }
+  ],
+  "schema": "7979168fc9fad846",
+  "types": "pub struct SlotDecl { pub name: String, pub view: String, pub props: String }\npub struct EntryBody\n{\n    pub view: String, pub instance: String, pub api: String, pub version:\n    String, pub schema: String, pub bundle: String, pub bundle_ref: String,\n    pub needs: Vec<String>, pub place: String, pub data: Vec<String>, pub\n    tries: Vec<String>, pub streams: Vec<String>, pub props: String, pub\n    props_fields: Vec<(String, String)>, pub state: String, pub slots:\n    Vec<SlotDecl>, pub speaks: Vec<String>, pub hears: Vec<String>, pub\n    supersedes: Option<String>, pub until: Option<u64>, pub label: String,\n} pub struct Signed { pub body: EntryBody, pub node: String, pub sig: String }\npub struct Holder { pub node: String, pub sig: String, pub lease_until: u64 }\npub struct Entry { pub body: EntryBody, pub holders: Vec<Holder> }\npub struct Resolved { pub seq: u64, pub entries: Vec<Entry> }\npub struct Complaint\n{ pub view: String, pub bundle: String, pub holder: String, pub why: String }",
+  "views": []
+}

@@ -1,0 +1,36 @@
+{
+  "api": "ops",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Read",
+      "req": "()",
+      "resp": "OpsBoard",
+      "right": "ops:read"
+    }
+  ],
+  "schema": "80b54a52f6c7fc32",
+  "types": "pub struct OpsBoard { pub nodes: Vec<String>, pub note: String }",
+  "views": [
+    {
+      "data": [
+        "Read"
+      ],
+      "hears": [],
+      "name": "ops.panel",
+      "needs": [
+        "ops:read"
+      ],
+      "place": "main",
+      "props": "()",
+      "slots": [],
+      "speaks": [],
+      "state": "()",
+      "streams": [],
+      "tries": []
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "api": "notes",
+  "major": 1,
+  "minor": 1,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "List",
+      "req": "()",
+      "resp": "Vec<Note>",
+      "right": "notes:read"
+    },
+    {
+      "id": 2,
+      "kw": [
+        "counted"
+      ],
+      "name": "Put",
+      "req": "PutReq",
+      "resp": "Note",
+      "right": "notes:write"
+    },
+    {
+      "id": 3,
+      "kw": [],
+      "name": "Since",
+      "req": "From",
+      "resp": "Delta",
+      "right": "notes:read"
+    },
+    {
+      "id": 9,
+      "kw": [],
+      "name": "Purge",
+      "req": "()",
+      "resp": "u32",
+      "right": "notes:admin"
+    },
+    {
+      "id": 10,
+      "kw": [],
+      "name": "Replicate",
+      "req": "Rep",
+      "resp": "bool",
+      "right": "notes:replicate"
+    },
+    {
+      "id": 11,
+      "kw": [],
+      "name": "Dump",
+      "req": "()",
+      "resp": "Vec<Rep>",
+      "right": "notes:replicate"
+    }
+  ],
+  "schema": "cd46c1db63f9b059",
+  "types": "pub struct Note\n{\n    pub id: String, pub text: String, pub sandbox: String, pub seq: u64, pub\n    colour: Option<String>\n}\npub struct Draft\n{ pub id: String, pub text: String, pub colour: Option<String> }\npub struct PutReq { pub op_id: String, pub note: Draft }\npub struct From { pub seq: u64 }\npub struct Delta { pub seq: u64, pub rows: Vec<Note> }\npub struct Rep { pub op_id: String, pub row: serde_json::Value }\npub struct NoteAdded { pub id: String }",
+  "views": [
+    {
+      "data": [
+        "List",
+        "Put"
+      ],
+      "hears": [],
+      "name": "notes.board",
+      "needs": [
+        "notes:read",
+        "notes:write"
+      ],
+      "place": "main",
+      "props": "()",
+      "slots": [
+        {
+          "name": "trend",
+          "props": "TrendProps",
+          "view": "trend.chart"
+        }
+      ],
+      "speaks": [
+        "NoteAdded"
+      ],
+      "state": "Draft",
+      "streams": [
+        "Since"
+      ],
+      "tries": [
+        "Purge"
+      ]
+    }
+  ]
+}

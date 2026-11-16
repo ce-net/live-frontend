@@ -1,0 +1,12 @@
+[package]
+name = "fe-gate"
+description = "The gate every node runs in front of its cells: the ce-gate rules (op right, expiry, holder, where) plus the counted right (issuer-signed spend tickets), the rate caveat and revocation, with one refusal shape"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+fe-chain.workspace = true

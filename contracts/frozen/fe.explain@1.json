@@ -1,0 +1,36 @@
+{
+  "api": "fe.explain",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Mine",
+      "req": "()",
+      "resp": "MyChain",
+      "right": "fe.explain:mine"
+    }
+  ],
+  "schema": "1ab12c768f6923d6",
+  "types": "pub struct LinkView\n{\n    pub issuer: String, pub holder: String, pub rights: Vec<String>, pub\n    until: u64, pub count: Option<u32>, pub rate: Option<u32>, pub rows:\n    Option<(String, String)>, pub mint: Option<u32>\n}\npub struct ViewVerdict\n{\n    pub view: String, pub api: String, pub held: Vec<String>, pub missing:\n    Vec<String>, pub holders: Vec<String>\n}\npub struct MyChain\n{\n    pub id: String, pub links: Vec<LinkView>, pub uses_left: u32, pub uses:\n    u32, pub until: u64, pub revoked: bool, pub views: Vec<ViewVerdict>, pub\n    gates: Vec<(String, String, String, String)>\n}",
+  "views": [
+    {
+      "data": [
+        "Mine"
+      ],
+      "hears": [],
+      "name": "cap.inspect",
+      "needs": [
+        "fe.explain:mine"
+      ],
+      "place": "side",
+      "props": "()",
+      "slots": [],
+      "speaks": [],
+      "state": "()",
+      "streams": [],
+      "tries": []
+    }
+  ]
+}

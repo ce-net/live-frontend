@@ -1,0 +1,11 @@
+[package]
+name = "lf-contract"
+description = "One contract, both halves: the ce_wire::api! text compiled over wire-lite, plus the ui { } block (views, needs, data, streams, slots, events) checked at compile time"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+wire-lite.workspace = true
+serde_json.workspace = true

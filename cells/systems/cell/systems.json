@@ -1,0 +1,218 @@
+[
+ {
+  "slug": "live-frontend",
+  "name": "A frontend made of cells",
+  "line": "Every panel is a UI cell with its own backend, contract, node and version, discovered at run time and swapped, refused or revoked while the rest keeps running.",
+  "repo": "https://github.com/ce-net/live-frontend",
+  "page": "https://ce-net.github.io/live-frontend/",
+  "status": "works"
+ },
+ {
+  "slug": "live-shop",
+  "name": "A store made of cells",
+  "line": "An online store in which the catalog, cart, inventory, order saga, test payments, gateway and page are each a cell with a typed contract. Stop the leaders mid-checkout: nothing is oversold, and no order is lost or made twice.",
+  "repo": "https://github.com/ce-net/live-shop",
+  "page": "https://ce-net.github.io/live-shop/",
+  "status": "works"
+ },
+ {
+  "slug": "live-refs",
+  "name": "References: anything to anything",
+  "line": "One kind of name reaches a file on a laptop, a blob, a repo file at a commit, a node, a person, a cell op, a capability and an enterprise system. It follows moves and refuses changed bytes.",
+  "repo": "https://github.com/ce-net/live-refs",
+  "page": "https://ce-net.github.io/live-refs/",
+  "status": "works"
+ },
+ {
+  "slug": "render-compute",
+  "name": "Render across devices",
+  "line": "One image, rendered by several machines at once. The result is pixel-identical to a single-machine render.",
+  "repo": "https://github.com/ce-net/demo-render-compute",
+  "page": "https://ce-net.com/demos/render-compute/",
+  "status": "works"
+ },
+ {
+  "slug": "self-healing",
+  "name": "Kill a node, keep the data",
+  "line": "Kill the server holding the data, live. Every saved write survives, and the page proves it with a hash chain.",
+  "repo": "https://github.com/ce-net/demo-self-healing",
+  "page": "https://ce-net.com/demos/self-healing/",
+  "status": "works"
+ },
+ {
+  "slug": "verified-result",
+  "name": "An engineering result you can re-check",
+  "line": "A physics result that comes with a certificate. Re-check it in your own browser: same code, same inputs, same answer.",
+  "repo": "https://github.com/ce-net/demo-verified-result",
+  "page": "https://ce-net.com/demos/verified/",
+  "status": "works"
+ },
+ {
+  "slug": "inference",
+  "name": "One prompt, many devices",
+  "line": "Ask a question and see which device answers. When one device drops out, the answer keeps streaming from another.",
+  "repo": "https://github.com/ce-net/demo-inference",
+  "page": "https://ce-net.com/demos/inference/",
+  "status": "partly"
+ },
+ {
+  "slug": "follow-me",
+  "name": "Follow-me cell",
+  "line": "A service that moves to whichever machine is closest to you, and keeps answering by the same name while it moves.",
+  "repo": "https://github.com/ce-net/demo-follow-me",
+  "page": "https://ce-net.com/follow-me/",
+  "status": "partly"
+ },
+ {
+  "slug": "playground",
+  "name": "Playground: deploy a cell in your browser",
+  "line": "Write a cell in your browser, deploy it to a real network, and call it from three languages, all within a minute.",
+  "repo": "https://github.com/ce-net/demo-playground",
+  "page": null,
+  "status": "partly"
+ },
+ {
+  "slug": "one-pinned-action",
+  "name": "A stranger gets exactly one action",
+  "line": "We give you a key that does exactly one thing. Try to make it do more. Every attempt is refused, and the page shows you the rule that refused it.",
+  "repo": "https://github.com/ce-net/demo-one-pinned-action",
+  "page": "https://ce-net.com/demos/one-action/",
+  "status": "partly"
+ },
+ {
+  "slug": "live-typed-data",
+  "name": "Same data, browser and terminal, live",
+  "line": "Change a value in your browser and see it change in a terminal and on a 3D factory map at the same moment. One schema, no server code.",
+  "repo": "https://github.com/ce-net/demo-live-typed-data",
+  "page": "https://ce-net.com/demos/live-data/",
+  "status": "partly"
+ },
+ {
+  "slug": "mesh-search",
+  "name": "Search everything you are allowed to see",
+  "line": "One search box across many machines. You only get back what your key allows, and the rest never leaves the machine it lives on.",
+  "repo": "https://github.com/ce-net/demo-mesh-search",
+  "page": "https://ce-net.com/demos/search/",
+  "status": "partly"
+ },
+ {
+  "slug": "wrap-anything",
+  "name": "Any program becomes a mesh service in one command",
+  "line": "Turn any open-source program into a network service with one command. Then use it from your browser: same output, byte for byte.",
+  "repo": "https://github.com/ce-net/demo-wrap-anything",
+  "page": "https://ce-net.com/demos/wrap/",
+  "status": "partly"
+ },
+ {
+  "slug": "printer-guard",
+  "name": "Print only through the guard",
+  "line": "Send a print job straight to the printer and it is refused. Send it through the guard, which checks bounds, temperatures, material and time: the 300 C job is rejected, the safe one prints, and a replay is refused.",
+  "repo": "https://github.com/ce-net/demo-printer-guard",
+  "page": "https://github.com/ce-net/demo-printer-guard",
+  "status": "works"
+ },
+ {
+  "slug": "signed-receipts",
+  "name": "Every call leaves a receipt",
+  "line": "Run 200 calls across four cells, download the receipts, and check them on any machine with no network. Edit one and the verifier names it; drop one and the chain shows the gap.",
+  "repo": "https://github.com/ce-net/demo-signed-receipts",
+  "page": "https://github.com/ce-net/demo-signed-receipts",
+  "status": "works"
+ },
+ {
+  "slug": "own-devices-only",
+  "name": "Shared with my devices, nobody else's",
+  "line": "Enroll your laptop, phone and desktop with a pairing code; each gets a key bound to that device. A copied key file is refused, and a lost phone is revoked from the laptop while the other two keep working.",
+  "repo": "https://github.com/ce-net/demo-own-devices-only",
+  "page": "https://github.com/ce-net/demo-own-devices-only",
+  "status": "works"
+ },
+ {
+  "slug": "sharded-search",
+  "name": "Sharded search: one leader per shard, rebalanced live",
+  "line": "4.6 million Wikipedia abstracts in 32 shards with 3 replicas each, one leader per shard. Kill a machine under a query loop that never stops: new leaders within one lease, replicas back to three, recall unchanged.",
+  "repo": "https://github.com/ce-net/demo-sharded-search",
+  "page": "https://ce-net.github.io/demo-sharded-search/",
+  "status": "partly"
+ },
+ {
+  "slug": "line-twin",
+  "name": "A factory line you can audit",
+  "line": "A three-station line runs as a twin and drill becomes the bottleneck. Download the signed event log: your browser checks every signature and recomputes the numbers. Edit one timestamp and it names the event that broke.",
+  "repo": "https://github.com/ce-net/demo-line-twin",
+  "page": "https://ce-net.github.io/demo-line-twin/",
+  "status": "works"
+ },
+ {
+  "slug": "carry-state",
+  "name": "A cell that takes its data with it",
+  "line": "A notes cell moves from process A to process B while a client writes to it 20 times a second. B takes over under a higher epoch, A answers stale writes with 'moved, epoch 2', and writes sent, acknowledged and present all match.",
+  "repo": "https://github.com/ce-net/demo-carry-state",
+  "page": "",
+  "status": "works"
+ },
+ {
+  "slug": "read-before-act",
+  "name": "Read it before you can act",
+  "line": "An approve key that only works after your device signs a read receipt for the exact notice. Approve first and it is refused with the clause that refused it; open the notice and the same call goes through.",
+  "repo": "https://github.com/ce-net/demo-read-before-act",
+  "page": "https://ce-net.github.io/demo-read-before-act/",
+  "status": "works"
+ },
+ {
+  "slug": "offline-merge",
+  "name": "Edit offline, merge on reconnect",
+  "line": "A laptop and a phone share a parts list. Pull the cable, edit both sides, plug it back in: both show the same list within a second, the page shows how each conflict was resolved, and both state hashes match.",
+  "repo": "https://github.com/ce-net/demo-offline-merge",
+  "page": "https://ce-net.github.io/demo-offline-merge/",
+  "status": "works"
+ },
+ {
+  "slug": "budget-key",
+  "name": "A key with a spending limit",
+  "line": "Give an agent a key worth 100 units and three cells that cost different amounts. A live meter drops with each call; at 3 left a 5-unit call is refused by a cell that has never seen the key, and splitting the key into two keys worth 100 each is refused.",
+  "repo": "https://github.com/ce-net/demo-budget-key",
+  "page": "https://ce-net.github.io/demo-budget-key/",
+  "status": "works"
+ },
+ {
+  "slug": "pay-on-proof",
+  "name": "Work that pays only when it checks out",
+  "line": "A requester posts 50 jobs and two workers take them; one is rigged to answer wrong one time in ten. A cheap verifier checks every result, only a pass gets a signed single-use reward token, and the rigged worker's acceptance rate drops live.",
+  "repo": "https://github.com/ce-net/demo-pay-on-proof",
+  "page": "https://ce-net.github.io/demo-pay-on-proof/",
+  "status": "works"
+ },
+ {
+  "slug": "revoke-everywhere",
+  "name": "Revoke once, refused everywhere",
+  "line": "Six cells accept one delegated key. Press revoke and each cell turns red as it refuses, with the milliseconds since the revoke. A cut-off cell keeps serving until its 30 s freshness bound runs out, then refuses everything.",
+  "repo": "https://github.com/ce-net/demo-revoke-everywhere",
+  "page": "https://ce-net.github.io/demo-revoke-everywhere/",
+  "status": "works"
+ },
+ {
+  "slug": "live-database",
+  "name": "One struct, three nodes",
+  "line": "One Rust struct becomes a typed Rust client and a generated TypeScript client. Kill one of three nodes mid-run: no write is lost, offline edits merge, two viewers see different rows, and a renamed field fails to compile in both languages.",
+  "repo": "https://github.com/ce-net/live-database",
+  "page": "https://ce-net.github.io/live-database/",
+  "status": "works"
+ },
+ {
+  "slug": "live-fundamentals",
+  "name": "Fundamentals, live",
+  "line": "Ten fundamental cells on a four-node mesh: typed contracts, by_name, ce-gate, cap v3 with Via, state.store, failover, search, orch, pinned builds and wrap. Every call is a signed record.",
+  "repo": "https://github.com/ce-net/live-fundamentals",
+  "page": "https://ce-net.github.io/live-fundamentals/",
+  "status": "partly"
+ },
+ {
+  "slug": "live-search",
+  "name": "Find a cell, call it",
+  "line": "Ask in plain words, \u201cturn this STL into a print-ready gcode\u201d: search ranks the cells with their typed contracts, a language model picks one and cites its fields, the build already holds that contract as Rust, orch starts the cell where it fits and a count-1 grant allows exactly one call. Or the job goes to a board and a worker returns a signed result.",
+  "repo": "https://github.com/ce-net/live-search",
+  "page": "https://ce-net.github.io/live-search/",
+  "status": "works"
+ }
+]

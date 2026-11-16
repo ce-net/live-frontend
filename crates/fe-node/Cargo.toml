@@ -1,0 +1,16 @@
+[package]
+name = "fe-node"
+description = "A live-frontend node as a real process: fe-host behind a sim-mesh door (signed frames on loopback), ticks, an input log, and on the door node the browser's HTTP door and the page"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+fe-host.workspace = true
+sim-mesh.workspace = true
+ed25519-dalek = { version = "2" }

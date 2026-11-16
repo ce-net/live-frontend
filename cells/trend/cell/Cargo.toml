@@ -1,0 +1,13 @@
+[package]
+name = "trend-cell"
+description = "The backend core of the trend cell: handle(op, body, cx) with no I/O of its own"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+trend-api.workspace = true
+fe-runtime.workspace = true
+fe-chain.workspace = true
+serde_json.workspace = true

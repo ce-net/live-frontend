@@ -1,0 +1,16 @@
+[package]
+name = "fe-runtime"
+description = "The runtime cells of live-frontend (fe.manifest, fe.serve, fe.visitor, fe.explain, fe.history, fe.door): their contracts, their cores, and the Cell trait every backend core implements"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+hex.workspace = true
+wire-lite.workspace = true
+lf-contract.workspace = true
+fe-chain.workspace = true
+fe-gate.workspace = true

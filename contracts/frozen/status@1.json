@@ -1,0 +1,52 @@
+{
+  "api": "status",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Read",
+      "req": "()",
+      "resp": "Board",
+      "right": "status:read"
+    },
+    {
+      "id": 2,
+      "kw": [],
+      "name": "Watch",
+      "req": "From",
+      "resp": "Board",
+      "right": "status:read"
+    }
+  ],
+  "schema": "9dac1efed1d9c16f",
+  "types": "pub struct NodeRow\n{ pub node: String, pub alive: bool, pub age_ms: u64, pub calls: u64 }\npub struct From { pub seq: u64 }\npub struct Board { pub holder: String, pub seq: u64, pub nodes: Vec<NodeRow> }",
+  "views": [
+    {
+      "data": [
+        "Read"
+      ],
+      "hears": [],
+      "name": "status.panel",
+      "needs": [
+        "status:read"
+      ],
+      "place": "main",
+      "props": "()",
+      "slots": [
+        {
+          "name": "trend",
+          "props": "TrendProps",
+          "view": "trend.chart"
+        }
+      ],
+      "speaks": [],
+      "state": "()",
+      "streams": [
+        "Watch"
+      ],
+      "tries": []
+    }
+  ]
+}

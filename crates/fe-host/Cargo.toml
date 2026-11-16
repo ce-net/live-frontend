@@ -1,0 +1,30 @@
+[package]
+name = "fe-host"
+description = "One node of live-frontend as a pure state machine: input (frame, tick, reply) -> output (reply, messages to send, a frame to forward). The native node process and the wasm node in the browser both run it, so a recorded input log replays to the same bytes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+base64.workspace = true
+hex.workspace = true
+lf-contract.workspace = true
+fe-chain.workspace = true
+fe-gate.workspace = true
+fe-runtime.workspace = true
+ce-ref-id.workspace = true
+notes-api.workspace = true
+status-api.workspace = true
+trend-api.workspace = true
+faults-api.workspace = true
+ops-api.workspace = true
+systems-api.workspace = true
+notes-cell.workspace = true
+status-cell.workspace = true
+trend-cell.workspace = true
+faults-cell.workspace = true
+ops-cell.workspace = true
+systems-cell.workspace = true

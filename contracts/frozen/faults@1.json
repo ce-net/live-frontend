@@ -1,0 +1,36 @@
+{
+  "api": "faults",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Arm",
+      "req": "ArmReq",
+      "resp": "Armed",
+      "right": "faults:run"
+    }
+  ],
+  "schema": "f38442ded9fb9130",
+  "types": "pub struct ArmReq { pub mode: String }\npub struct Armed { pub mode: String, pub n: u32, pub session: String }",
+  "views": [
+    {
+      "data": [
+        "Arm"
+      ],
+      "hears": [],
+      "name": "faults.panel",
+      "needs": [
+        "faults:run"
+      ],
+      "place": "main",
+      "props": "()",
+      "slots": [],
+      "speaks": [],
+      "state": "()",
+      "streams": [],
+      "tries": []
+    }
+  ]
+}

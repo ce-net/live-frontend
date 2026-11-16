@@ -1,0 +1,52 @@
+{
+  "api": "fe.history",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Append",
+      "req": "NewEvent",
+      "resp": "u64",
+      "right": "fe.history:append"
+    },
+    {
+      "id": 2,
+      "kw": [],
+      "name": "Observe",
+      "req": "Observation",
+      "resp": "u64",
+      "right": "fe.history:observe"
+    },
+    {
+      "id": 3,
+      "kw": [],
+      "name": "Since",
+      "req": "From",
+      "resp": "Events",
+      "right": "fe.history:read"
+    }
+  ],
+  "schema": "4f22931816a368a6",
+  "types": "pub struct NewEvent\n{\n    pub kind: String, pub node: String, pub cell: String, pub detail:\n    serde_json::Value\n}\npub struct Observation\n{ pub kind: String, pub cell: String, pub detail: serde_json::Value }\npub struct Event\n{\n    pub seq: u64, pub t: u64, pub kind: String, pub node: String, pub cell:\n    String, pub detail: serde_json::Value, pub by: String, pub prev: String,\n    pub hash: String\n} pub struct From { pub seq: u64 }\npub struct Events { pub head: u64, pub events: Vec<Event> }",
+  "views": [
+    {
+      "data": [
+        "Since"
+      ],
+      "hears": [],
+      "name": "timeline.view",
+      "needs": [
+        "fe.history:read"
+      ],
+      "place": "bottom",
+      "props": "()",
+      "slots": [],
+      "speaks": [],
+      "state": "()",
+      "streams": [],
+      "tries": []
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build-test-prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --prefix web --no-audit --no-fund
+      - name: build every cell, the node and the tool
+        run: cargo build --workspace --release --locked
+      - name: vendored files match their pinned hashes
+        run: cargo cell vendor-check
+      - name: contract-break check, slot props, decl.lint
+        run: cargo cell check
+      - name: bundles, page, wasm node; the views compile against the generated clients
+        run: cargo cell build && cd web && npx tsc --noEmit -p .
+      - name: unit, gate, chain, in-process mesh and replay tests
+        run: cargo test --workspace --release --locked
+      - name: three contract breaks must fail
+        run: cargo cell break-proof
+      - name: the committed recorded run verifies (signatures, chain, every input re-executed)
+        run: cargo cell verify proof
+      - name: browsers for the recorded run
+        run: cd web && npx playwright-core install --with-deps chromium firefox
+      - name: a fresh recorded run on four processes, in Chromium and Firefox
+        env:
+          LF_BROWSERS: chromium,firefox
+          CHROMIUM: ""
+        run: cargo cell record && cargo cell verify proof
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-recorded-run
+          path: proof

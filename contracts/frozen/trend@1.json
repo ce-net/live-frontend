@@ -1,0 +1,44 @@
+{
+  "api": "trend",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Series",
+      "req": "TrendProps",
+      "resp": "Points",
+      "right": "trend:read"
+    },
+    {
+      "id": 2,
+      "kw": [],
+      "name": "Push",
+      "req": "Sample",
+      "resp": "()",
+      "right": "trend:push"
+    }
+  ],
+  "schema": "e4f51abec015e90a",
+  "types": "pub struct TrendProps { pub series: String }\npub struct Points\n{ pub series: String, pub lines: Vec<(String, Vec<(u64, f64)>)> }\npub struct Sample { pub series: String, pub key: String, pub v: f64 }",
+  "views": [
+    {
+      "data": [
+        "Series"
+      ],
+      "hears": [],
+      "name": "trend.chart",
+      "needs": [
+        "trend:read"
+      ],
+      "place": "slot",
+      "props": "TrendProps",
+      "slots": [],
+      "speaks": [],
+      "state": "()",
+      "streams": [],
+      "tries": []
+    }
+  ]
+}

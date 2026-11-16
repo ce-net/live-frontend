@@ -1,0 +1,2 @@
+[alias]
+cell = "run -q --release -p lf --"

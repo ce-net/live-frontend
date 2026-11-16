@@ -1,0 +1,38 @@
+{
+  "api": "systems.catalog",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "List",
+      "req": "()",
+      "resp": "Vec<System>",
+      "right": "systems.catalog:read"
+    }
+  ],
+  "schema": "dc09b270be2c4edf",
+  "types": "pub struct Open { pub url: String }\npub struct System\n{\n    pub slug: String, pub name: String, pub line: String, pub repo: String,\n    pub page: String, pub status: String\n}",
+  "views": [
+    {
+      "data": [
+        "List"
+      ],
+      "hears": [],
+      "name": "systems.card",
+      "needs": [
+        "systems.catalog:read"
+      ],
+      "place": "cards",
+      "props": "()",
+      "slots": [],
+      "speaks": [
+        "Open"
+      ],
+      "state": "()",
+      "streams": [],
+      "tries": []
+    }
+  ]
+}

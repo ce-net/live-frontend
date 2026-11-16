@@ -1,0 +1,15 @@
+[package]
+name = "sim-wasm"
+description = "The node of live-frontend compiled to wasm32: the same fe-host and cell cores, one instance per Web Worker, plus the proof verifier"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fe-host.workspace = true
+live-proof.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,26 @@
+{
+  "api": "fe.door",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Hello",
+      "req": "()",
+      "resp": "Welcome",
+      "right": "fe.door:hello"
+    },
+    {
+      "id": 2,
+      "kw": [],
+      "name": "Call",
+      "req": "Routed",
+      "resp": "serde_json::Value",
+      "right": "fe.door:call"
+    }
+  ],
+  "schema": "564a21bab45b0882",
+  "types": "pub struct NodeInfo\n{ pub name: String, pub class: String, pub key: String, pub fp: String }\npub struct Welcome\n{\n    pub root: String, pub nodes: Vec<NodeInfo>, pub door: String, pub mode:\n    String\n} pub struct Routed { pub to: String, pub vc: fe_gate::VisitorCall }",
+  "views": []
+}
