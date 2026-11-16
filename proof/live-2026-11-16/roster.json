@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "class": "cloud",
+      "fp": "3cb6b78aa96b",
+      "key": "5f818f27a53ba0cf20920b84cf3e63cc50b90cd5b6ea611da33f2107a8b4cf1d",
+      "name": "a"
+    },
+    {
+      "class": "cloud",
+      "fp": "47cab56730b3",
+      "key": "f8368e1c829af6dfc5f59e27f1eca8004e7132d53ac9c7d9b896b7064b0a0a95",
+      "name": "b"
+    },
+    {
+      "class": "cloud",
+      "fp": "b2ca819f6eaf",
+      "key": "452f4fb53d2c0cc1c5083e33f47c2c4c6ee1b50d6fd3bdf2092269bb31d47101",
+      "name": "c"
+    },
+    {
+      "class": "cloud",
+      "fp": "5b765da92896",
+      "key": "3eeab9fdff308244f0583d9c99a6fab1afe3202457799a820c6e7ae31191fb2b",
+      "name": "d"
+    }
+  ],
+  "note": "live: the keys were drawn in memory and never written anywhere; the steps are verified by signature only",
+  "recorder": "ed25519:3bbab5d54ae24d12aeeb8bbf56512cbc69986c76ddee5e47a0205bbb390a1496",
+  "root": "260fc63fb971b92402efe3cd3672ac47e0e5721c1d3df2c0a4050c884aeed9d7",
+  "seed": "(live: not kept)",
+  "t0": 1794795673538
+}

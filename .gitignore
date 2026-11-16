@@ -4,3 +4,4 @@ web/dist/
 *.log
 *.pid
 /run/
+/run-live/

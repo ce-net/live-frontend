@@ -32,6 +32,8 @@ const HELP: &str = "cargo cell <command>
   new <name>          a new cell pair and UI directory from the template
   gen                 TypeScript clients from the contracts (cells/*/ui/gen)
   build [--pages]     gen + every UI bundle + the page + the wasm node (web/dist)
+  live [--record]     the nodes with keys drawn in memory (never written), door on 127.0.0.1:21400; --record writes
+                      proof/live-<date>/ from a headless browser using a real visitor chain on them
   record              a real multi-process run driven by headless browsers -> proof/
   verify [dir]        signatures, hash chain, and re-execution of every logged input
   break-proof         three contract breaks that must fail: a renamed field (check and the TypeScript views),
@@ -80,6 +82,7 @@ fn main() {
         Some("sim") => sim(&r, false, false),
         Some("dev") => sim(&r, true, false),
         Some("record") => sim(&r, false, true),
+        Some("live") => live(&r, args.iter().any(|a| a == "--record")),
         Some("verify") => {
             let d = args.get(1).map(PathBuf::from).unwrap_or_else(|| r.join("proof"));
             match verify::run(&d) {
@@ -264,7 +267,9 @@ fn record_run(r: &Path, net: &std::sync::Arc<run::Net>, browsers: &str, out: &Pa
     std::fs::create_dir_all(out.join("inputs")).unwrap();
     let obs = r.join("run/observations.json");
     let ok = sh(Command::new("node")
-        .args(["tools/record.mjs", "--url", &format!("http://127.0.0.1:{}/", run::DOOR), "--ctl", &format!("http://127.0.0.1:{}", run::CTL), "--browsers", browsers, "--out"])
+        .args(["tools/record.mjs", "--url", &format!("http://127.0.0.1:{}/", net.door_port), "--ctl", &format!("http://127.0.0.1:{}", run::CTL), "--browsers", browsers])
+        .args(if std::env::var("LF_RECORD_LIVE").is_ok() { vec!["--live"] } else { vec![] })
+        .arg("--out")
         .arg(&obs)
         .arg("--shots")
         .arg(out.join("shots"))
@@ -292,19 +297,30 @@ fn record_run(r: &Path, net: &std::sync::Arc<run::Net>, browsers: &str, out: &Pa
         log.push(step, &k);
     }
     std::fs::write(out.join("run.jsonl"), log.jsonl()).unwrap();
-    for n in ["a", "b", "c", "d"] {
-        let _ = std::fs::copy(r.join(format!("run/inputs/{n}.jsonl")), out.join(format!("inputs/{n}.jsonl")));
+    let live = std::env::var("LF_RECORD_LIVE").is_ok();
+    let rundir = if live { "run-live" } else { "run" };
+    if !live {
+        for n in ["a", "b", "c", "d"] {
+            let _ = std::fs::copy(r.join(format!("run/inputs/{n}.jsonl")), out.join(format!("inputs/{n}.jsonl")));
+        }
+        let _ = std::fs::copy(r.join("run/configs.json"), out.join("configs.json"));
+    } else {
+        let _ = std::fs::remove_dir_all(out.join("inputs"));
     }
-    let _ = std::fs::copy(r.join("run/configs.json"), out.join("configs.json"));
     let recorder = format!("ed25519:{}", net.recorder.public_hex());
-    let cfgs: Value = serde_json::from_str(&std::fs::read_to_string(r.join("run/configs.json")).unwrap()).unwrap();
+    let cfgs: Value = serde_json::from_str(&std::fs::read_to_string(r.join(format!("{rundir}/d.json"))).unwrap()).map(|c: Value| json!([c])).unwrap();
     let nodes: Vec<Value> = cfgs[0]["nodes"].as_array().unwrap().iter().map(|m| json!({"name": m["name"], "class": m["class"], "key": m["key"], "fp": fe_chain::fingerprint(m["key"].as_str().unwrap())})).collect();
     let roster = json!({"recorder": recorder, "seed": net.seed, "root": cfgs[0]["root"], "nodes": nodes, "t0": net.t0,
-        "note": "sim keys: every key of this run is derived from the seed above, so anyone can re-create the nodes and re-execute the inputs"});
+        "note": if live { "live: the keys were drawn in memory and never written anywhere; the steps are verified by signature only" } else { "sim keys: every key of this run is derived from the seed above, so anyone can re-create the nodes and re-execute the inputs" }});
     std::fs::write(out.join("roster.json"), serde_json::to_string_pretty(&roster).unwrap()).unwrap();
     let mut summary = o["summary"].clone();
     summary["recorded"] = json!(o["recorded"]);
-    match verify::run(&out) {
+    let verified = if live {
+        live_proof::verify(&std::fs::read_to_string(out.join("run.jsonl")).unwrap(), &[recorder.clone()]).map(|n| format!("run.jsonl: {n} signed steps, chain intact (live: signature check only)"))
+    } else {
+        verify::run(&out)
+    };
+    match verified {
         Ok(s) => {
             println!("{s}");
             summary["verify"] = json!(s);
@@ -380,5 +396,29 @@ fn break_proof(r: &Path) -> i32 {
         0
     } else {
         1
+    }
+}
+
+fn live(r: &Path, record: bool) -> i32 {
+    let net = match run::Net::start_live(r) {
+        Ok(n) => n,
+        Err(e) => {
+            eprintln!("{e}");
+            return 1;
+        }
+    };
+    if net.wait_page().is_err() {
+        eprintln!("the live door did not come up");
+        return 1;
+    }
+    println!("live nodes up; door and page on http://127.0.0.1:{}/ (keys only in the node processes' memory)", run::LIVE_DOOR);
+    if record {
+        let day = String::from_utf8(Command::new("date").args(["-u", "+%Y-%m-%d"]).output().unwrap().stdout).unwrap().trim().to_string();
+        let out = r.join("proof").join(format!("live-{day}"));
+        std::env::set_var("LF_RECORD_LIVE", "1");
+        return record_run(r, &net, "chromium", &out);
+    }
+    loop {
+        std::thread::sleep(Duration::from_secs(3600));
     }
 }

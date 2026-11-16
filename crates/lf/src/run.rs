@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 pub const DOOR: u16 = 21200;
 pub const CTL: u16 = 21202;
 pub const MESH: u16 = 21210;
+pub const LIVE_DOOR: u16 = 21400;
+pub const LIVE_MESH: u16 = 21410;
 
 #[allow(dead_code)]
 pub struct Net {
@@ -25,6 +27,7 @@ pub struct Net {
     pub recorder: Identity,
     pub seed: String,
     pub t0: u64,
+    pub door_port: u16,
 }
 
 fn http_get(port: u16, path: &str) -> Option<String> {
@@ -38,24 +41,52 @@ fn http_get(port: u16, path: &str) -> Option<String> {
 
 impl Net {
     pub fn start(root: &Path, seed: &str, log: bool) -> Result<Arc<Net>, String> {
-        let dir = root.join("run");
+        Net::start_with(root, seed, log, false)
+    }
+
+    /// Live: the root seed is drawn from the OS here and kept only in memory; node and issuer seeds reach each
+    /// node process in its environment (cleared once read). The config files on disk hold public keys only.
+    pub fn start_live(root: &Path) -> Result<Arc<Net>, String> {
+        let mut b = [0u8; 32];
+        std::io::Read::read_exact(&mut std::fs::File::open("/dev/urandom").map_err(|e| e.to_string())?, &mut b).map_err(|e| e.to_string())?;
+        Net::start_with(root, &hex::encode(b), false, true)
+    }
+
+    fn start_with(root: &Path, seed: &str, log: bool, live: bool) -> Result<Arc<Net>, String> {
+        let (door_port, mesh_port) = if live { (LIVE_DOOR, LIVE_MESH) } else { (DOOR, MESH) };
+        let dir = root.join(if live { "run-live" } else { "run" });
         let _ = std::fs::remove_dir_all(dir.join("inputs"));
         std::fs::create_dir_all(dir.join("inputs")).map_err(|e| e.to_string())?;
         let t0 = sim_mesh::now_ms();
         let commit = std::process::Command::new("git").args(["rev-parse", "HEAD"]).current_dir(root).output().ok()
             .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string()).filter(|s| s.len() == 40).unwrap_or_default();
-        let (sim_root, cfgs) = fe_host::sim::configs(seed, t0, &commit);
+        let (sim_root, mut cfgs) = fe_host::sim::configs(seed, t0, &commit);
+        let mut secrets: BTreeMap<String, (String, String)> = BTreeMap::new();
+        if live {
+            for c in cfgs.iter_mut() {
+                c.mode = "live".into();
+                c.pow_zeros = Some(3);
+                for m in c.nodes.iter_mut() {
+                    m.class = "cloud".into();
+                }
+                let issuer = c.issuer.as_mut().map(|(s, _)| std::mem::take(s)).unwrap_or_default();
+                secrets.insert(c.name.clone(), (std::mem::take(&mut c.seed), issuer));
+            }
+        }
         let ctl_key = sim_root.derive("ctl");
         let mut roster = Roster { root: ctl_key.public_hex(), nodes: BTreeMap::new() };
         for (i, c) in cfgs.iter().enumerate() {
             let key = c.nodes.iter().find(|m| m.name == c.name).unwrap().key.clone();
-            roster.nodes.insert(c.name.clone(), Member { port: MESH + i as u16, key });
+            let key = if key.is_empty() { String::new() } else { key };
+            roster.nodes.insert(c.name.clone(), Member { port: mesh_port + i as u16, key });
         }
         std::fs::write(dir.join("mesh.json"), serde_json::to_string_pretty(&roster).unwrap()).unwrap();
         for c in &cfgs {
             std::fs::write(dir.join(format!("{}.json", c.name)), serde_json::to_string_pretty(c).unwrap()).unwrap();
         }
-        std::fs::write(dir.join("configs.json"), serde_json::to_string_pretty(&cfgs).unwrap()).unwrap();
+        if !live {
+            std::fs::write(dir.join("configs.json"), serde_json::to_string_pretty(&cfgs).unwrap()).unwrap();
+        }
         let bin = std::env::current_exe().unwrap().parent().unwrap().join("fe-node");
         if !bin.exists() {
             return Err(format!("{} not built (cargo build --release -p fe-node)", bin.display()));
@@ -68,7 +99,13 @@ impl Net {
                 c.arg("--log").arg(d2.join(format!("inputs/{name}.jsonl")));
             }
             if name == "d" {
-                c.arg("--http").arg(format!("127.0.0.1:{DOOR}")).arg("--static").arg(r2.join("web/dist"));
+                c.arg("--http").arg(format!("127.0.0.1:{door_port}")).arg("--static").arg(r2.join("web/dist"));
+            }
+            if let Some((s, i)) = secrets.get(name) {
+                c.env("LF_NODE_SEED", s).env("LF_MODE", "live");
+                if !i.is_empty() {
+                    c.env("LF_ISSUER_SEED", i);
+                }
             }
             c.spawn().expect("spawn fe-node")
         });
@@ -78,7 +115,7 @@ impl Net {
         let bundles: Value = serde_json::from_str(&std::fs::read_to_string(root.join("web/dist/bundles.json")).map_err(|_| "web/dist/bundles.json missing: run `cargo cell build` first")?).unwrap();
         let net = Arc::new(Net {
             root: root.into(), dir, ctl, plan, bundles, installed: Default::default(), up: Default::default(),
-            recorder: sim_root.derive("recorder"), seed: seed.into(), t0,
+            recorder: sim_root.derive("recorder"), seed: if live { "(live: not kept)".into() } else { seed.into() }, t0, door_port,
         });
         for n in ["a", "b", "c", "d"] {
             net.ctl.start(n);
@@ -172,7 +209,7 @@ impl Net {
 
     pub fn wait_page(&self) -> Result<(), String> {
         for _ in 0..50 {
-            if http_get(DOOR, "/door.json").is_some() {
+            if http_get(self.door_port, "/door.json").is_some() {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(100));

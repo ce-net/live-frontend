@@ -1,0 +1,8 @@
+{
+  "browsers": [
+    "chromium"
+  ],
+  "recorded": "2026-11-16T02:21:26.645Z",
+  "steps": "4 of 4 pass",
+  "verify": "run.jsonl: 4 signed steps, chain intact (live: signature check only)"
+}

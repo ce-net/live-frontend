@@ -42,7 +42,7 @@ async function main(): Promise<void> {
   if (local) {
     door = new HttpDoor(local.door);
     ctl = new HttpController(`${location.protocol}//${location.hostname}:21202`);
-    $('mode').textContent = 'Sim on four local processes';
+    $('mode').textContent = local.mode === 'live' ? 'Live nodes: four processes on a cloud node, keys only in their memory' : 'Sim on four local processes';
   } else {
     net = new SimNet();
     $('mode').textContent = 'Sim in this browser: four nodes, each a Web Worker running the wasm node';
@@ -115,6 +115,14 @@ async function main(): Promise<void> {
     return;
   }
   button('Join as a visitor', () => shell.join());
+  if (welcome.mode === 'live') {
+    // live nodes are not changed from the page: the visitor's own actions only
+    button('Let notes.board try to escape its sandbox', () => shell.probe('notes.board'));
+    button('Revoke my chain', () => shell.revoke());
+    await proof(net);
+    await shell.join().catch((e) => said(String(e)));
+    return;
+  }
   button('Start the faults cell on b', () => ctl.action('start-faults'));
   button('Deploy notes 1.1, node by node', () => ctl.action('deploy-notes-1.1'));
   button('Deploy notes 2.0 beside 1', () => ctl.action('deploy-notes-2.0'));

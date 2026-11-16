@@ -11,6 +11,7 @@ const ctlUrl = arg('--ctl', 'http://127.0.0.1:21202');
 const out = arg('--out', 'obs.json');
 const shots = arg('--shots', 'shots');
 const browsers = arg('--browsers', 'chromium').split(',');
+const LIVE = process.argv.includes('--live');
 mkdirSync(shots, { recursive: true });
 const bundles = JSON.parse(readFileSync('dist/bundles.json', 'utf8'));
 
@@ -243,7 +244,58 @@ async function run(name, type) {
   await b.close();
 }
 
+// Live: the same page against the real node processes of `cargo cell live`. No controller: nothing is changed
+// underneath; the steps are the visitor's own: join, see the chain, an allowed write, a refused call, the count
+// running out, revocation.
+async function runLive(name, type) {
+  const exe = process.env.CHROMIUM || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
+  const b = await type.launch(name === 'chromium' ? { executablePath: exe, args: ['--no-sandbox'] } : {});
+  const page = await b.newPage({ viewport: { width: 1400, height: 2400 } });
+  await page.goto(url + '?join=0');
+  await until(page, () => window.__lf && window.__lf.shell.welcome);
+  const t = Date.now();
+  await page.evaluate(() => window.__lf.shell.join());
+  await until(page, () => window.__lf.shell.events.filter((e) => e.kind === 'Mounted').length >= 8);
+  const w = await page.evaluate(() => ({ mode: window.__lf.shell.welcome.mode, nodes: window.__lf.shell.welcome.nodes.map((n) => ({ class: n.class, fp: n.fp })), chain: window.__lf.shell.chainId, holder: window.__lf.shell.id.pub }));
+  const mine = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'fe.explain@1', 'Mine', null)).body);
+  step(2, name, 'fe.visitor', 'Join', 'd', { holder: w.holder.slice(0, 16) + '...', pow: 'sha256 with 3 leading hex zeros' }, { mode: w.mode, nodes: w.nodes, chain: w.chain, links: mine.links, uses: mine.uses },
+    w.mode === 'live' && mine.links.length === 2 && mine.uses === 40, `Joined the live nodes in ${Date.now() - t} ms: chain ${w.chain}, root -> issuer -> this browser's WebCrypto key, 40 counted uses, 15 minutes`, Date.now() - t);
+  const resolved = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'fe.manifest@1', 'Resolve', null)).body.entries.map((e) => e.body.view));
+  const opsSha = bundles['ops.panel@1.0'].sha;
+  const fetchOps = await page.evaluate((sha) => window.__lf.shell.call(null, 'a', 'fe.serve@1', 'Fetch', { sha256: sha }), opsSha);
+  step(2, name, 'fe.serve', 'Fetch', 'a', { sha256: opsSha }, { resolved: [...new Set(resolved)], ops_fetch: fetchOps.refused },
+    !resolved.includes('ops.panel') && /need: "ops:read"/.test(fetchOps.refused || ''), 'ops.panel is not in this chain\'s manifest, and the gate refuses its bundle');
+  await page.screenshot({ path: `${shots}/${name}-live-joined.png`, fullPage: true });
+  const nf = await cellFrame(page, 'notes.board');
+  await nf.locator('input[type=text]').fill('a note on the live nodes');
+  await nf.locator('button', { hasText: 'Write' }).click();
+  await sleep(1200);
+  const allowed = await nf.locator('div.small.muted').first().innerText();
+  await nf.locator('button', { hasText: 'Call notes.Purge' }).click();
+  await sleep(1200);
+  const purge = await nf.locator('.verdict').innerText();
+  await nf.locator('button', { hasText: 'Spend the rest of my uses' }).click();
+  let exhausted = '';
+  for (let i = 0; i < 120 && !/exhausted/.test(exhausted); i++) {
+    await sleep(250);
+    exhausted = await nf.locator('.verdict').innerText();
+  }
+  step(11, name, 'notes', 'Put / Purge / Put*', 'a,b,c', {}, { allowed, purge, exhausted },
+    /^Allowed/.test(allowed) && /^Refused\{need: "notes:admin"/.test(purge) && /uses exhausted/.test(exhausted), 'On the live gates: a write allowed in the visitor sandbox, notes.Purge refused verbatim, the counted uses running out');
+  await page.screenshot({ path: `${shots}/${name}-live-refused.png`, fullPage: true });
+  const rv = await page.evaluate(() => window.__lf.shell.revoke());
+  const empty = await until(page, () => window.__lf.shell.frames() === 0, 15000);
+  const after = await page.evaluate(() => window.__lf.shell.call(null, 'a', 'notes@1', 'List', null));
+  step(12, name, 'fe.visitor', 'Revoke', 'd', {}, { revoked: rv.ok, next_call: after.refused }, !!empty && /revoked/.test(after.refused || ''), 'Revoked on the live nodes: the next call refused, every panel left');
+  await page.screenshot({ path: `${shots}/${name}-live-revoked.png`, fullPage: true });
+  await b.close();
+}
+
 for (const name of browsers) {
+  if (LIVE) {
+    await runLive(name, name === 'firefox' ? firefox : chromium);
+    continue;
+  }
   const type = name === 'firefox' ? firefox : chromium;
   try {
     await run(name, type);

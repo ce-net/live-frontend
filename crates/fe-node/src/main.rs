@@ -56,7 +56,19 @@ fn now() -> u64 {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let cfg: Config = serde_json::from_str(&std::fs::read_to_string(arg(&args, "--config").expect("--config")).unwrap()).unwrap();
+    let mut cfg: Config = serde_json::from_str(&std::fs::read_to_string(arg(&args, "--config").expect("--config")).unwrap()).unwrap();
+    // live: the keys are never in a file. The controller made them in memory and hands them over in this
+    // process's environment, which is cleared once read; they end with the process.
+    if cfg.seed.is_empty() {
+        cfg.seed = std::env::var("LF_NODE_SEED").expect("no seed in the config and no LF_NODE_SEED");
+        std::env::remove_var("LF_NODE_SEED");
+    }
+    if let Some((s, _)) = cfg.issuer.as_mut() {
+        if s.is_empty() {
+            *s = std::env::var("LF_ISSUER_SEED").expect("no issuer seed");
+            std::env::remove_var("LF_ISSUER_SEED");
+        }
+    }
     let roster: Roster = serde_json::from_str(&std::fs::read_to_string(arg(&args, "--mesh").expect("--mesh")).unwrap()).unwrap();
     let me = cfg.name.clone();
     let key = ed25519_dalek::SigningKey::from_bytes(&hex::decode(&cfg.seed).unwrap().try_into().unwrap());
@@ -92,7 +104,8 @@ fn main() {
                     return http::Resp::json(&door(&n, v["op"].as_str().unwrap_or(""), v["body"].clone()));
                 }
                 if req.path == "/door.json" {
-                    return http::Resp::json(&json!({"mode": "local", "door": "/door"}));
+                    let live = std::env::var("LF_MODE").map(|m| m == "live").unwrap_or(false);
+                    return http::Resp::json(&json!({"mode": if live { "live" } else { "local" }, "door": "/door"}));
                 }
                 http::file(&root, &req.path)
             })

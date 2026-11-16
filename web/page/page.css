@@ -39,3 +39,4 @@ body[data-index=systems] .right,body[data-index=systems] .bottom,body[data-index
 body[data-index=systems] .grid{grid-template-columns:200px minmax(0,1fr);grid-template-areas:"left centre"}
 @media (max-width:720px){body[data-index=systems] .grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"centre" "left"}}
 .lede a{color:var(--acc)}
+.proof td{word-break:break-word}.proof td:nth-child(2){min-width:220px}.proof table{table-layout:fixed}.proof td:first-child,.proof th:first-child{width:44px}.proof td:last-child,.proof th:last-child{width:60px}

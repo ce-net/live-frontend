@@ -93,8 +93,16 @@ Pinned open dependencies: `wire-lite`, `sim-mesh`, `live-proof`, `ce-ref-id` fro
 The visitor chain is real in every mode: the browser makes a non-extractable Ed25519 key with WebCrypto, gets a
 chain root to issuer to that key (15 minutes, 40 counted uses, a rate, writes only to its own sandbox rows), and
 signs every call; each node's gate checks it. In the sim, the root and node keys are derived from the run's seed.
-Live mode (gates on real ce-net nodes under the ce-net root, behind a public door) is described in
-[docs/DESIGN.md](docs/DESIGN.md) section 7 and is not open yet.
+`cargo cell live` runs the four nodes as a long-running service on a cloud node, with every key (root, issuer,
+nodes) drawn from the OS in memory and never written anywhere; the config files hold public keys only.
+[proof/live-2026-11-16/](proof/live-2026-11-16/) is headless Chromium on that node using a real visitor chain on
+those gates: join (root, issuer, this browser's WebCrypto key), `ops.panel` absent and its bundle refused, a write
+allowed, `notes.Purge` refused verbatim, the 40 uses running out, revocation emptying the page; 4 of 4 steps pass,
+checked by signature (live inputs are not re-executed, since their keys are gone).
+
+Not open yet: the issuer under the ce-net site root, the same chain checked by a second (desk) node's gate, and a
+public route to the live door, so the Pages site can offer "Live nodes" next to the in-browser sim
+([docs/DESIGN.md](docs/DESIGN.md) section 7.3).
 
 ## License
 
