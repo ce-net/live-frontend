@@ -532,19 +532,26 @@ export class Shell {
     const t = performance.now();
     const live = this.all().filter((m) => m.ready && !m.frozen);
     const late = live.filter((m) => t - m.lastBeat > 1600);
-    if (late.length >= 2 && late.length * 2 > live.length) {
-      if (!this.stall) this.stall = { from: Math.min(...late.map((m) => m.lastBeat)), frames: late.length };
-      return;
+    if (!this.stall && late.length >= 2 && late.length * 2 > live.length) {
+      this.stall = { from: Math.min(...late.map((m) => m.lastBeat)), frames: late.length, resumed: null };
     }
-    if (this.stall && late.length === 0) {
-      const s = { ms: Math.round(t - this.stall.from), frames: this.stall.frames, of: live.length };
-      this.stats.stalls.push(s);
-      this.event('FramesPaused', 'shell', s, true);
-      this.stall = null;
+    if (this.stall) {
+      this.stall.frames = Math.max(this.stall.frames, late.length);
+      if (late.length === 0 || (this.stall.resumed !== null && t - this.stall.resumed > 4000)) {
+        const s = { ms: Math.round((this.stall.resumed ?? t) - this.stall.from), frames: this.stall.frames, of: live.length };
+        this.stats.stalls.push(s);
+        this.event('FramesPaused', 'shell', s, true);
+        this.stall = null;
+        // a frame still silent gets one more full window; if it stays silent the normal check restarts it
+        for (const m of late) m.lastBeat = t;
+      } else if (this.stall.resumed === null && late.length < this.stall.frames) {
+        this.stall.resumed = t;
+      }
+      return;
     }
     for (const m of late) void this.crashed(m, 'stopped answering (three beats missed)');
   }
-  private stall: { from: number; frames: number } | null = null;
+  private stall: { from: number; frames: number; resumed: number | null } | null = null;
 
   unmount(m: Mounted, why: string): void {
     this.kept.set(m.key, { state: m.state, from: m.entry.body.version, t: Date.now() });

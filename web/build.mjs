@@ -30,7 +30,8 @@ writeFileSync('dist/bundles.json', JSON.stringify(index, null, 1));
 if (!only) {
   await build({ entryPoints: ['page/main.ts'], bundle: true, format: 'esm', minify: true, outfile: 'dist/page.js', target: 'es2022', legalComments: 'none' });
   await build({ entryPoints: ['sim/worker.ts'], bundle: true, format: 'iife', minify: true, outfile: 'dist/worker.js', target: 'es2022', legalComments: 'none' });
-  for (const f of ['index.html', 'page.css']) cpSync('page/' + f, 'dist/' + f);
+  for (const f of ['index.html', 'systems.html', 'page.css']) cpSync('page/' + f, 'dist/' + f);
+  cpSync('../cells/systems/cell/systems.json', 'dist/systems.json');
   cpSync('cell.css', 'dist/cell.css');
   cpSync('plan.json', 'dist/plan.json');
   mkdirSync('dist/kit/fonts', { recursive: true });

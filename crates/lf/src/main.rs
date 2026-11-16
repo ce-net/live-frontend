@@ -145,23 +145,44 @@ fn vendor_check(r: &Path) -> i32 {
 }
 
 fn sim(r: &Path, watch: bool, record: bool) -> i32 {
-    let seed = std::env::var("LF_SEED").unwrap_or_else(|_| if record { format!("record-{}", sim_mesh::now_ms() / 1000) } else { "dev".into() });
-    let net = match run::Net::start(r, &seed, record) {
+    if record {
+        // one fresh network per browser: the first browser's run is proof/, the others proof/<browser>/
+        let browsers = std::env::var("LF_BROWSERS").unwrap_or_else(|_| "chromium".into());
+        let mut code = 0;
+        for (i, b) in browsers.split(',').enumerate() {
+            let seed = format!("record-{b}-{}", sim_mesh::now_ms() / 1000);
+            let net = match run::Net::start(r, &seed, true) {
+                Ok(n) => n,
+                Err(e) => {
+                    eprintln!("{e}");
+                    return 1;
+                }
+            };
+            run::serve_ctl(&net);
+            if net.wait_page().is_err() {
+                eprintln!("the door did not come up");
+                return 1;
+            }
+            let out = if i == 0 { r.join("proof") } else { r.join("proof").join(b) };
+            println!("recording with {b} on four fresh nodes -> {}", out.display());
+            code |= record_run(r, &net, b, &out);
+        }
+        return code;
+    }
+    let seed = std::env::var("LF_SEED").unwrap_or_else(|_| "dev".into());
+    let net = match run::Net::start(r, &seed, false) {
         Ok(n) => n,
         Err(e) => {
             eprintln!("{e}");
             return 1;
         }
     };
-    net.serve_ctl();
+    run::serve_ctl(&net);
     if net.wait_page().is_err() {
         eprintln!("the door did not come up");
         return 1;
     }
     println!("four nodes up (a, b, c serve cells; d is the door). Open http://127.0.0.1:{}/  (controls: :{})", run::DOOR, run::CTL);
-    if record {
-        return record_run(r, &net);
-    }
     if watch {
         watch_loop(r, &net);
     }
@@ -236,13 +257,14 @@ fn watch_loop(r: &Path, net: &std::sync::Arc<run::Net>) {
     }
 }
 
-fn record_run(r: &Path, net: &std::sync::Arc<run::Net>) -> i32 {
-    let out = r.join("proof");
+fn record_run(r: &Path, net: &std::sync::Arc<run::Net>, browsers: &str, out: &Path) -> i32 {
+    let out = out.to_path_buf();
+    let _ = std::fs::remove_dir_all(out.join("inputs"));
+    let _ = std::fs::remove_dir_all(out.join("shots"));
     std::fs::create_dir_all(out.join("inputs")).unwrap();
-    let browsers = std::env::var("LF_BROWSERS").unwrap_or_else(|_| "chromium".into());
     let obs = r.join("run/observations.json");
     let ok = sh(Command::new("node")
-        .args(["tools/record.mjs", "--url", &format!("http://127.0.0.1:{}/", run::DOOR), "--ctl", &format!("http://127.0.0.1:{}", run::CTL), "--browsers", &browsers, "--out"])
+        .args(["tools/record.mjs", "--url", &format!("http://127.0.0.1:{}/", run::DOOR), "--ctl", &format!("http://127.0.0.1:{}", run::CTL), "--browsers", browsers, "--out"])
         .arg(&obs)
         .arg("--shots")
         .arg(out.join("shots"))

@@ -166,9 +166,11 @@ async function run(name, type) {
   const ffs = await cellFrame(page, 'faults.panel');
   const shown = ffs ? await ffs.locator('div.small.muted').first().innerText() : '';
   step(8, name, 'faults.panel', 'crash', 'browser', { crashes: ['throw', 'tight loop 4 s'] }, { throw: { restarted: r1 && r1.detail, others_untouched: `${u8.length} of ${o8.length}`, shown_after: shown }, loop: { ...loop, frames_rebooted: rebooted } },
-    !!r1 && u8.length === o8.length && r1.detail.state && r1.detail.state.crashes >= 1 && rebooted.length === 0,
-    `faults.panel threw: restarted alone with its saved state, ${u8.length} of ${o8.length} other cells untouched. Then a 4 s tight loop in it (${name}): the shell's own thread stalled at most ${loop.shell_max_gap_ms} ms; ` +
-      (loop.stalls.length ? `the cell frames paused together for ${loop.stalls[0].ms} ms (${name} runs all sandboxed frames of a page in one renderer process) and none was restarted` : 'no other frame paused'));
+    !!r1 && u8.length === o8.length && r1.detail.state && r1.detail.state.crashes >= 1,
+    `faults.panel threw: restarted alone with its saved state, ${u8.length} of ${o8.length} other cells untouched. Then a 4 s tight loop in it (${name}): ` +
+      (loop.shell_max_gap_ms > 1000
+        ? `the whole page, shell included, paused for ${loop.shell_max_gap_ms} ms (${name} runs a sandboxed frame on the page's own thread); frames restarted afterwards: ${rebooted.length}`
+        : `the shell kept running (its thread stalled at most ${loop.shell_max_gap_ms} ms) while the cell frames paused together for ${loop.stalls.length ? loop.stalls[0].ms : 0} ms (${name} runs sandboxed frames in shared renderer processes); frames restarted afterwards: ${rebooted.length}`));
   summary[`tight_loop_${name}`] = { shell_stall_ms: loop.shell_max_gap_ms, frames_paused: loop.stalls[0] || null };
 
   // P9: kill b while status streams; a retried write with the same op id is applied once

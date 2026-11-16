@@ -65,7 +65,10 @@ fn main() {
         if let Some(d) = std::path::Path::new(&p).parent() {
             let _ = std::fs::create_dir_all(d);
         }
-        Mutex::new(std::fs::OpenOptions::new().create(true).append(true).open(p).unwrap())
+        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(p).unwrap();
+        // a (re)started process begins with fresh state: the replay starts a fresh host at this line
+        let _ = writeln!(f, "{{\"boot\":{}}}", now());
+        Mutex::new(f)
     });
     let node = Arc::new(Node { host: Mutex::new(Host::new(cfg).expect("config")), log, mesh: mesh.clone(), me: me.clone() });
 

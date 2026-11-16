@@ -1,0 +1,21 @@
+{
+  "browsers": [
+    "firefox"
+  ],
+  "cells_untouched_during_swap": "8 of 8",
+  "failover_ms": 443,
+  "hot_swap_ms": 68,
+  "max_other_beat_gap_ms": 0,
+  "page_errors_firefox": 1,
+  "recorded": "2026-11-16T02:07:57.086Z",
+  "steps": "12 of 12 pass",
+  "tight_loop_firefox": {
+    "frames_paused": {
+      "frames": 10,
+      "ms": 4915,
+      "of": 10
+    },
+    "shell_stall_ms": 4000
+  },
+  "verify": "run.jsonl: 12 signed steps, chain intact, all signed by the recorder ed25519:59135d899acd\nnode a: 511 of 511 logged inputs re-executed to the same output bytes\nnode b: 524 of 524 logged inputs re-executed to the same output bytes\nnode c: 596 of 596 logged inputs re-executed to the same output bytes\nnode d: 1302 of 1302 logged inputs re-executed to the same output bytes"
+}

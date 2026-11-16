@@ -30,7 +30,7 @@ export interface MyChain {
   until: number;
   revoked: boolean;
   views: ViewVerdict[];
-  gates: ([string, string, string, string])[];
+  gates: [string, string, string, string][];
 }
 
 /** The ops view `cap.inspect` may call: data ["Mine"], tries [] (may be refused), streams []. */

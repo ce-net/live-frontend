@@ -12,10 +12,14 @@ pub fn replay(dir: &Path) -> Result<BTreeMap<String, (usize, usize)>, String> {
     for c in cfgs {
         let name = c.name.clone();
         let Ok(log) = std::fs::read_to_string(dir.join(format!("inputs/{name}.jsonl"))) else { continue };
-        let mut h = Host::new(c)?;
+        let mut h = Host::new(c.clone())?;
         let (mut n, mut same) = (0, 0);
         for line in log.lines().filter(|l| !l.trim().is_empty()) {
             let v: Value = serde_json::from_str(line).map_err(|e| format!("{name}: {e}"))?;
+            if v.get("boot").is_some() {
+                h = Host::new(c.clone())?; // the process was (re)started here
+                continue;
+            }
             let inp: Input = serde_json::from_value(v["in"].clone()).map_err(|e| format!("{name}: {e}"))?;
             let o = serde_json::to_string(&h.input(inp)).unwrap();
             n += 1;

@@ -170,30 +170,6 @@ impl Net {
         json!({"up": *self.up.lock().unwrap(), "installed": *self.installed.lock().unwrap(), "mode": "local"})
     }
 
-    /// The controller's HTTP endpoint for the page's controls (and the recorder).
-    pub fn serve_ctl(self: &Arc<Self>) {
-        let me = self.clone();
-        std::thread::spawn(move || {
-            crate::http::serve(&format!("127.0.0.1:{CTL}"), move |req| {
-                if req.path == "/ctl/state" {
-                    return crate::http::Resp::json(&me.state());
-                }
-                if req.method == "POST" && req.path == "/ctl" {
-                    let v: Value = serde_json::from_slice(&req.body).unwrap_or_default();
-                    let r = match v["action"].as_str() {
-                        Some(a) => me.action(a),
-                        None => me.step(&v["step"]),
-                    };
-                    return crate::http::Resp::json(&match r {
-                        Ok(v) => json!({"ok": true, "result": v}),
-                        Err(e) => json!({"ok": false, "error": e}),
-                    });
-                }
-                crate::http::Resp::status(404, "no")
-            })
-        });
-    }
-
     pub fn wait_page(&self) -> Result<(), String> {
         for _ in 0..50 {
             if http_get(DOOR, "/door.json").is_some() {
@@ -203,4 +179,36 @@ impl Net {
         }
         Err("door did not answer on :21200".into())
     }
+}
+
+/// The net the controls act on (a record run starts one per browser).
+pub static CURRENT: std::sync::OnceLock<Mutex<Option<Arc<Net>>>> = std::sync::OnceLock::new();
+
+/// The controller's HTTP endpoint for the page's controls (and the recorder). Started once per process.
+pub fn serve_ctl(net: &Arc<Net>) {
+    let slot = CURRENT.get_or_init(|| Mutex::new(None));
+    let first = slot.lock().unwrap().replace(net.clone()).is_none();
+    if !first {
+        return;
+    }
+    std::thread::spawn(move || {
+        crate::http::serve(&format!("127.0.0.1:{CTL}"), move |req| {
+            let Some(me) = CURRENT.get().and_then(|s| s.lock().unwrap().clone()) else { return crate::http::Resp::status(503, "no net") };
+            if req.path == "/ctl/state" {
+                return crate::http::Resp::json(&me.state());
+            }
+            if req.method == "POST" && req.path == "/ctl" {
+                let v: Value = serde_json::from_slice(&req.body).unwrap_or_default();
+                let r = match v["action"].as_str() {
+                    Some(a) => me.action(a),
+                    None => me.step(&v["step"]),
+                };
+                return crate::http::Resp::json(&match r {
+                    Ok(v) => json!({"ok": true, "result": v}),
+                    Err(e) => json!({"ok": false, "error": e}),
+                });
+            }
+            crate::http::Resp::status(404, "no")
+        })
+    });
 }

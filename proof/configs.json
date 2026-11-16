@@ -1,0 +1,157 @@
+[
+  {
+    "name": "a",
+    "seed": "d272731d03cefad9ceb6cbbdd1961ba4602e6ba43330c0f5bef2510d1ea31375",
+    "root": "6b123bcedf1b26432e8957eb2e0a638be8dea5e4d23790c15dd555d97d2301ed",
+    "nodes": [
+      {
+        "name": "a",
+        "class": "sim",
+        "key": "d36f286d2b0e707db3019a2b48400660eced1e34cfbcdffa0ca2a4e59c9c6ddd"
+      },
+      {
+        "name": "b",
+        "class": "sim",
+        "key": "855f4fcfa7e57101ddf83b6e8c87c8845eb3fb019c2718eda06f63469125a17c"
+      },
+      {
+        "name": "c",
+        "class": "sim",
+        "key": "de4241230d40d0cf2b5035d18b9e3c4dd9afb1207e4da3a996e4b9f2c2d560ba"
+      },
+      {
+        "name": "d",
+        "class": "sim",
+        "key": "a8dfdcef9395814b936b98a43dad8345c507d4f14da337f7ad80fb8612531a14"
+      }
+    ],
+    "door": "d",
+    "issuer": null,
+    "commit": "5d8fe92e31f873d0960af8af4de6ef5ce9361555",
+    "mode": "sim",
+    "pow_zeros": 2
+  },
+  {
+    "name": "b",
+    "seed": "a4f29f611e041e9bf499a315cde275cfd0c51b6b9e7e7750e057c7684d9cec51",
+    "root": "6b123bcedf1b26432e8957eb2e0a638be8dea5e4d23790c15dd555d97d2301ed",
+    "nodes": [
+      {
+        "name": "a",
+        "class": "sim",
+        "key": "d36f286d2b0e707db3019a2b48400660eced1e34cfbcdffa0ca2a4e59c9c6ddd"
+      },
+      {
+        "name": "b",
+        "class": "sim",
+        "key": "855f4fcfa7e57101ddf83b6e8c87c8845eb3fb019c2718eda06f63469125a17c"
+      },
+      {
+        "name": "c",
+        "class": "sim",
+        "key": "de4241230d40d0cf2b5035d18b9e3c4dd9afb1207e4da3a996e4b9f2c2d560ba"
+      },
+      {
+        "name": "d",
+        "class": "sim",
+        "key": "a8dfdcef9395814b936b98a43dad8345c507d4f14da337f7ad80fb8612531a14"
+      }
+    ],
+    "door": "d",
+    "issuer": null,
+    "commit": "5d8fe92e31f873d0960af8af4de6ef5ce9361555",
+    "mode": "sim",
+    "pow_zeros": 2
+  },
+  {
+    "name": "c",
+    "seed": "2da755c35baee1a6b6bc336219a9737f55141654cd77637f636e48bad11e7ead",
+    "root": "6b123bcedf1b26432e8957eb2e0a638be8dea5e4d23790c15dd555d97d2301ed",
+    "nodes": [
+      {
+        "name": "a",
+        "class": "sim",
+        "key": "d36f286d2b0e707db3019a2b48400660eced1e34cfbcdffa0ca2a4e59c9c6ddd"
+      },
+      {
+        "name": "b",
+        "class": "sim",
+        "key": "855f4fcfa7e57101ddf83b6e8c87c8845eb3fb019c2718eda06f63469125a17c"
+      },
+      {
+        "name": "c",
+        "class": "sim",
+        "key": "de4241230d40d0cf2b5035d18b9e3c4dd9afb1207e4da3a996e4b9f2c2d560ba"
+      },
+      {
+        "name": "d",
+        "class": "sim",
+        "key": "a8dfdcef9395814b936b98a43dad8345c507d4f14da337f7ad80fb8612531a14"
+      }
+    ],
+    "door": "d",
+    "issuer": null,
+    "commit": "5d8fe92e31f873d0960af8af4de6ef5ce9361555",
+    "mode": "sim",
+    "pow_zeros": 2
+  },
+  {
+    "name": "d",
+    "seed": "0e73099e12a9a959d6415cd8f84a50b79a59fccfe36fda37ea24e0d616b709a2",
+    "root": "6b123bcedf1b26432e8957eb2e0a638be8dea5e4d23790c15dd555d97d2301ed",
+    "nodes": [
+      {
+        "name": "a",
+        "class": "sim",
+        "key": "d36f286d2b0e707db3019a2b48400660eced1e34cfbcdffa0ca2a4e59c9c6ddd"
+      },
+      {
+        "name": "b",
+        "class": "sim",
+        "key": "855f4fcfa7e57101ddf83b6e8c87c8845eb3fb019c2718eda06f63469125a17c"
+      },
+      {
+        "name": "c",
+        "class": "sim",
+        "key": "de4241230d40d0cf2b5035d18b9e3c4dd9afb1207e4da3a996e4b9f2c2d560ba"
+      },
+      {
+        "name": "d",
+        "class": "sim",
+        "key": "a8dfdcef9395814b936b98a43dad8345c507d4f14da337f7ad80fb8612531a14"
+      }
+    ],
+    "door": "d",
+    "issuer": [
+      "f1bc96eda1dd2568bacd51cd2002d9a33c99176c67b9f08504681c26e5bae3e9",
+      {
+        "issuer": "6b123bcedf1b26432e8957eb2e0a638be8dea5e4d23790c15dd555d97d2301ed",
+        "holder": "595fb65a1cc9b3dc0ed67b2581f6d521e80e63e493faa273dea717ef65ff8b51",
+        "rights": [
+          "fe.manifest:resolve",
+          "fe.manifest:report",
+          "fe.serve:fetch",
+          "fe.history:read",
+          "fe.history:observe",
+          "fe.explain:mine",
+          "fe.visitor:revoke-own",
+          "fe.visitor:state",
+          "systems.catalog:read",
+          "notes:read",
+          "notes:write",
+          "status:read",
+          "trend:read",
+          "faults:run"
+        ],
+        "caveats": {
+          "until": 1802570764407,
+          "mint": 500
+        },
+        "sig": "c1ec03caa595b73cc8bba9ce54138cb4269d432a76a17c7c097f34b2ed2963b5c364821ad2136158bfc8242a6b1df4c44814d3ccbfc922795a13207ee8fe1701"
+      }
+    ],
+    "commit": "5d8fe92e31f873d0960af8af4de6ef5ce9361555",
+    "mode": "sim",
+    "pow_zeros": 2
+  }
+]

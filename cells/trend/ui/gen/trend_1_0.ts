@@ -10,7 +10,7 @@ export interface TrendProps {
 }
 export interface Points {
   series: string;
-  lines: ([string, ([number, number])[]])[];
+  lines: [string, [number, number][]][];
 }
 export interface Sample {
   series: string;

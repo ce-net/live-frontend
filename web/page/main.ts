@@ -14,6 +14,7 @@ const el = (tag: string, cls = '', text = '') => {
   return e;
 };
 const said = (s: string) => ($('said').textContent = s);
+const INDEX = document.body.dataset.index === 'systems';
 
 async function kitCss(): Promise<string> {
   const parts = await Promise.all(['kit/tokens.css', 'kit/components.css', 'cell.css'].map((u) => fetch(u).then((r) => r.text())));
@@ -48,6 +49,11 @@ async function main(): Promise<void> {
     await net.start('sim.wasm', 'worker.js', 'page-' + Date.now());
     const [plan, bundles] = await Promise.all([fetch('plan.json').then((r) => r.json()), fetch('bundles.json').then((r) => r.json())]);
     const sc = new SimController(net, plan, bundles, '');
+    if (INDEX) {
+      // the index of live systems: one systems.card cell instance per system, served by a and b
+      const systems: { slug: string }[] = await fetch('systems.json').then((r) => r.json());
+      plan.base = systems.map((x, i) => ({ op: 'install', node: i % 2 ? 'b' : 'a', view: 'systems.card', api: 'systems.catalog', version: '1.0', dir: 'systems', instance: x.slug, peers: ['a', 'b'] }));
+    }
     await sc.base_();
     ctl = sc;
     door = net;
@@ -101,6 +107,13 @@ async function main(): Promise<void> {
     };
     $('controls').append(b);
   };
+  if (INDEX) {
+    button('Stop node b (its cards leave)', () => ctl.action('stop-b'));
+    button('Start node b', () => ctl.action('start-b'));
+    button('Revoke my chain', () => shell.revoke());
+    await shell.join().catch((e) => said(String(e)));
+    return;
+  }
   button('Join as a visitor', () => shell.join());
   button('Start the faults cell on b', () => ctl.action('start-faults'));
   button('Deploy notes 1.1, node by node', () => ctl.action('deploy-notes-1.1'));
@@ -173,6 +186,11 @@ async function proof(net: SimNet | null): Promise<void> {
     rr.className = 'mono ' + (res.every((x) => !x.includes('differs')) ? 'ok' : 'bad');
   };
   box.append(rb, rr);
+  const ff = await fetch('proof/firefox/summary.json').then((r) => (r.ok ? r.json() : null), () => null);
+  if (ff) {
+    const loop = ff.tight_loop_firefox?.shell_stall_ms;
+    box.append(el('p', 'mono', `The same run in Firefox (proof/firefox/): ${ff.steps}. A 4 s tight loop in a cell paused the whole page there for ${loop} ms (Firefox runs a sandboxed frame on the page's thread); in Chromium the shell kept running.`));
+  }
   void net;
 }
 
