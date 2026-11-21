@@ -21,6 +21,61 @@ async function kitCss(): Promise<string> {
   return parts.join('\n').replace(/@font-face\{[^}]*\}/g, '');
 }
 
+// Section 6 of the design: each live system may publish `ce-ui.json` on its own site. The index holds only the
+// places to ask (`holders.json`, from ce-net/demos when reachable). An entry whose sha256 does not match its card
+// is refused and listed with the reason; a site without the file keeps its built-in line.
+const CARD_FIELDS = ['slug', 'name', 'line', 'repo', 'page', 'status'] as const;
+type Card = Record<(typeof CARD_FIELDS)[number], string>;
+async function sha256Hex(s: string): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+export const canonicalCard = (c: Card): string => JSON.stringify(Object.fromEntries(CARD_FIELDS.map((k) => [k, c[k]])));
+async function getJson(u: string, ms = 4000): Promise<any> {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ms);
+  try {
+    const r = await fetch(u, { signal: ac.signal, cache: 'no-store' });
+    return r.ok ? await r.json() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+async function announcements(builtIn: string[]): Promise<Map<string, Card>> {
+  const out = new Map<string, Card>();
+  const box = $('announce');
+  const holders = (await getJson('https://ce-net.github.io/demos/holders.json')) ?? (await getJson('holders.json'));
+  const origins: string[] = holders && Array.isArray(holders.origins) ? holders.origins : builtIn.map((s) => `https://ce-net.github.io/${s}/`);
+  const said: { origin: string; verdict: string; ok: boolean }[] = [];
+  await Promise.all(origins.map(async (o) => {
+    const f = await getJson(new URL('ce-ui.json', o).href);
+    if (!f || !Array.isArray(f.cards)) return;
+    for (const e of f.cards) {
+      const c = e && e.card;
+      if (!c || !CARD_FIELDS.every((k) => typeof c[k] === 'string')) {
+        said.push({ origin: o, verdict: 'refused: not a card', ok: false });
+        continue;
+      }
+      const got = await sha256Hex(canonicalCard(c));
+      if (got !== e.sha256) {
+        said.push({ origin: o, verdict: `refused ${c.slug}: sha256 want ${String(e.sha256).slice(0, 12)} got ${got.slice(0, 12)}`, ok: false });
+        continue;
+      }
+      out.set(c.slug, c);
+      said.push({ origin: o, verdict: `${c.slug}: announced by its own site, sha256 ${got.slice(0, 12)} checked`, ok: true });
+    }
+  }));
+  if (box) {
+    box.replaceChildren();
+    box.append(el('li', 'muted', `${origins.length} places asked, ${out.size} cards announced, ${said.filter((x) => !x.ok).length} refused; the rest keep their built-in line`));
+    for (const x of said) box.append(el('li', x.ok ? '' : 'bad', x.verdict));
+  }
+  (window as any).__lfAnnounced = said;
+  return out;
+}
+
 async function main(): Promise<void> {
   $('theme').onclick = () => {
     const d = document.documentElement;
@@ -52,7 +107,10 @@ async function main(): Promise<void> {
     if (INDEX) {
       // the index of live systems: one systems.card cell instance per system, served by a and b
       const systems: { slug: string }[] = await fetch('systems.json').then((r) => r.json());
-      plan.base = systems.map((x, i) => ({ op: 'install', node: i % 2 ? 'b' : 'a', view: 'systems.card', api: 'systems.catalog', version: '1.0', dir: 'systems', instance: x.slug, peers: ['a', 'b'] }));
+      const announced = await announcements(systems.map((x) => x.slug));
+      const slugs = [...new Set([...systems.map((x) => x.slug), ...announced.keys()])];
+      // every card on both a and b, so either holder answers with the entry its system announced
+      plan.base = slugs.flatMap((slug) => ['a', 'b'].map((node) => ({ op: 'install', node, view: 'systems.card', api: 'systems.catalog', version: '1.0', dir: 'systems', instance: slug, peers: ['a', 'b'], data: announced.get(slug) ?? null })));
     }
     await sc.base_();
     ctl = sc;

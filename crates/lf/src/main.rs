@@ -443,7 +443,11 @@ fn live(r: &Path, record: bool) -> i32 {
         let day = String::from_utf8(Command::new("date").args(["-u", "+%Y-%m-%d"]).output().unwrap().stdout).unwrap().trim().to_string();
         let out = r.join("proof").join(format!("live-{day}"));
         std::env::set_var("LF_RECORD_LIVE", "1");
-        return record_run(r, &net, "chromium", &out);
+        // The operator's controller (loopback only, not reachable from the door): it deploys, tampers and stops
+        // nodes underneath the page; the browser holds only its visitor chain.
+        run::serve_ctl(&net);
+        let browsers = std::env::var("LF_BROWSERS").unwrap_or_else(|_| "chromium".into());
+        return record_run(r, &net, &browsers, &out);
     }
     loop {
         std::thread::sleep(Duration::from_secs(3600));

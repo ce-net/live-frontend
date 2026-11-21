@@ -56,7 +56,7 @@ pub fn make_cell(api: &str) -> Option<Box<dyn Cell>> {
         "trend" => Box::new(trend_cell::Trend::default()),
         "faults" => Box::new(faults_cell::Faults::default()),
         "ops" => Box::new(ops_cell::Ops),
-        "systems.catalog" => Box::new(systems_cell::Systems),
+        "systems.catalog" => Box::new(systems_cell::Systems::default()),
         _ => return None,
     })
 }

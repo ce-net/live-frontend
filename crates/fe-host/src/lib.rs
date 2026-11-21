@@ -614,6 +614,9 @@ impl Host {
         if !api_name.starts_with("fe.") && registry::make_cell(&api_name).is_some() {
             let c = self.cells.entry(api_name.clone()).or_insert_with(|| registry::make_cell(&api_name).expect("a cell for every contract"));
             c.serve(major, minor);
+            if !b["data"].is_null() {
+                c.install_data(&instance, b["data"].clone());
+            }
         }
         let peers: Vec<String> = b["peers"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
         self.installs.retain(|(v, i, a), _| !(*v == view && *i == instance && *a == api));

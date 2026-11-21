@@ -32,6 +32,17 @@ if (!only) {
   await build({ entryPoints: ['sim/worker.ts'], bundle: true, format: 'iife', minify: true, outfile: 'dist/worker.js', target: 'es2022', legalComments: 'none' });
   for (const f of ['index.html', 'systems.html', 'page.css']) cpSync('page/' + f, 'dist/' + f);
   cpSync('../cells/systems/cell/systems.json', 'dist/systems.json');
+  {
+    // ce-ui.json: this system's own card entry for the index of live systems (design section 6), and the
+    // fallback list of places to ask when the index's holders.json is not reachable
+    const sys = JSON.parse(readFileSync('../cells/systems/cell/systems.json', 'utf8'));
+    const keys = ['slug', 'name', 'line', 'repo', 'page', 'status'];
+    const canon = (c) => JSON.stringify(Object.fromEntries(keys.map((k) => [k, c[k]])));
+    const me = sys.find((x) => x.slug === 'live-frontend');
+    const card = me;
+    writeFileSync('dist/ce-ui.json', JSON.stringify({ format: 'ce-ui@1', cards: [{ card, sha256: createHash('sha256').update(canon(card)).digest('hex') }] }, null, 1));
+    writeFileSync('dist/holders.json', JSON.stringify({ format: 'ce-ui-holders@1', origins: sys.map((x) => x.page).filter(Boolean) }, null, 1));
+  }
   cpSync('cell.css', 'dist/cell.css');
   cpSync('plan.json', 'dist/plan.json');
   mkdirSync('dist/kit/fonts', { recursive: true });

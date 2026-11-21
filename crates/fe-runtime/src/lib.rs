@@ -84,6 +84,8 @@ pub trait Cell: Send {
     fn html(&self, _view: &str, _instance: &str, _props: &Value) -> Option<String> {
         None
     }
+    /// Data an install step hands one instance (a `systems.card` gets the entry its system announced).
+    fn install_data(&mut self, _instance: &str, _data: Value) {}
     fn tick(&mut self, _cx: &mut Cx) {}
     fn reply(&mut self, _tag: &str, _ok: bool, _body: Value, _cx: &mut Cx) {}
     /// A node's beat (every node sends one each second to every node).

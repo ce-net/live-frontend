@@ -88,6 +88,13 @@ async function run(name, type) {
     !resolved.includes('ops.panel') && !fetchOps.ok && /need: "ops:render:panel"/.test(fetchOps.refused) && order.length >= 7,
     `Joined: ${order.length} cells mounted in ${Date.now() - tj} ms; ops.panel absent from page.compose; ops Render.Bundle of its hash refused by node a's gate (ops:render:panel)`, Date.now() - tj);
   await page.screenshot({ path: `${shots}/${name}-p2-joined.png`, fullPage: true });
+  if (LIVE) {
+    // the chain on the live nodes: root (drawn in memory) -> issuer -> this browser's WebCrypto key
+    const w = await page.evaluate(() => ({ mode: window.__lf.shell.welcome.mode, nodes: window.__lf.shell.welcome.nodes.map((n) => ({ class: n.class, fp: n.fp })), chain: window.__lf.shell.chainId, holder: window.__lf.shell.id.pub }));
+    const mine = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'fe.explain@1', 'Mine', null)).body);
+    step(2, name, 'fe.visitor', 'Join', 'd', { holder: w.holder.slice(0, 16) + '...', pow: 'sha256 with 3 leading hex zeros' }, { mode: w.mode, nodes: w.nodes, chain: w.chain, links: mine.links, uses: mine.uses, rights: mine.rights },
+      w.mode === 'live' && mine.links.length === 2, `Live nodes: chain ${w.chain}, root -> issuer -> this browser's WebCrypto key, ${mine.uses} counted uses left, visitor rights only`);
+  }
 
   // P3: a new cell starts on b while the page is open
   const t3 = Date.now();
@@ -299,8 +306,7 @@ async function run(name, type) {
   await b.close();
 }
 
-// Live: the same page against the real node processes of `cargo cell live`. No controller: nothing is changed
-// underneath; the steps are the visitor's own: join, see the chain, an allowed write, a refused call, the count
+// Live, short form (LF_LIVE_SHORT=1): no controller, nothing is changed underneath; the steps are the visitor's own: join, see the chain, an allowed write, a refused call, the count
 // running out, revocation.
 async function runLive(name, type) {
   const exe = process.env.CHROMIUM || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
@@ -347,7 +353,7 @@ async function runLive(name, type) {
 }
 
 for (const name of browsers) {
-  if (LIVE) {
+  if (LIVE && process.env.LF_LIVE_SHORT) {
     await runLive(name, name === 'firefox' ? firefox : chromium);
     continue;
   }
