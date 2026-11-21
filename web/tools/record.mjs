@@ -256,7 +256,12 @@ async function run(name, type) {
   const others13 = Object.entries(ls13).flatMap(([n, v]) => v.listeners.filter((l) => l.what === 'other').map((l) => `${n}:${l.port}`));
   const served13 = await page.evaluate(async () => (await fetch('_served')).json());
   const got13 = await page.evaluate(() => [location.pathname.replace(/^\//, '') || 'index.html', ...performance.getEntriesByType('resource').map((r) => new URL(r.name).pathname.replace(/^\//, ''))].filter((p) => p !== '_served' && p !== 'door' && p !== 'door.json'));
-  const unmapped13 = [...new Set(got13)].filter((p) => !served13.some((x) => x.path === p || (p === '' && x.path === 'index.html')));
+  const unmapped13 = [];
+  for (const p of [...new Set(got13)].filter((p) => !served13.some((x) => x.path === p || (p === '' && x.path === 'index.html')))) {
+    // a path http.serve answered with a refusal or "not found" delivered no content; only 200s must map to a step
+    const status = await page.evaluate(async (q) => (await fetch(q)).status, p);
+    if (status === 200) unmapped13.push(p);
+  }
   step(13, name, 'http.serve', 'listeners', 'a,b,c,d', { ss: '-ltnp per node process' }, { listeners: ls13, http_serve_on: http13, other: others13, served: served13.length, unmapped: unmapped13 },
     http13.length === 1 && http13[0] === 'd' && others13.length === 0 && unmapped13.length === 0 && served13.length > 0,
     `One HTTP listener on the mesh, owned by the http.serve cell on d; every other socket is a node's mesh port from the roster; ${served13.length} paths the browser received each map to a render or compose step (cell, node, sha256)`);

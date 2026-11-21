@@ -364,13 +364,29 @@ One screen, light theme, the tokens and components of `repo:demos`.
 
 | Part | State |
 |---|---|
-| Sections 2 to 4, 8, 9: eight UI cells, contracts, chains, gate, shell with one sandboxed frame per cell, `cargo cell` | built; CI green on `0db0df4` |
-| Recorded run P1 to P12, four real processes, Chromium and Firefox | in `proof/`, 12 of 12 each, re-executed byte for byte by `cargo cell verify` and by the page |
-| Pages: browser sim (four wasm nodes) and replay | up |
-| Index as cells | built as `systems.html` in this repo; the page of `ce-net/demos` itself is still a static list (section 16) |
-| Headline card on the index | present |
-| Live nodes | one recorded run on one cloud node, keys drawn in memory (`proof/live-2026-11-16/`, 4 of 4 by signature); not under the ce-net root, no second gate, no public route (section 17) |
-| Rule of section 15 | not met: bundles are served by `fe.serve`, the page by a small HTTP server inside `fe-node`, the manifest by a registry; none of them is a capability of the cell that owns the view |
+| Sections 2 to 4, 8, 9: eight UI cells, contracts, chains, gate, shell with one sandboxed frame per cell, `cargo cell` | built; CI green |
+| Section 15 (slice 5): `render:*` ops, slots by capability, `page.compose`, `fe.shell`, one `http.serve` cell, listener rule and grant-table check in `cargo cell check`, `cargo cell export` | built in `24f94ca` and after; `fe.manifest`, `fe.serve` and `fe.door` retired |
+| Recorded run P1 to P16, four real processes | in `proof/`, re-executed byte for byte by `cargo cell verify` and by the page; CI records it again in Chromium and Firefox on every push |
+| Pages | the output of `http.serve` for the anonymous chain (`cargo cell export`), with `served.json`; the browser sim (four wasm nodes) and replay run from it |
+| Index as cells (section 16) | `systems.html` in this repo; the page of `ce-net/demos` itself is still a static list |
+| Live nodes (section 17) | one recorded run on one cloud node, keys drawn in memory (`proof/live-2026-11-16/`, recorded before section 15); the approval card of 17 is proposed, nothing is installed until it is approved |
+
+Implementation notes for section 15, where the build differs in detail from the text below:
+
+- A view's render right is spelled in the contract (`view "notes.board" place "main" render "notes:render:board"`),
+  and `contract!` fails the build unless it is `<api>:render:<view>` and not also listed in `needs`. The three ops
+  appear in the descriptor as `Render.Entry/<view>`, `Render.Bundle/<view>`, `Render.Html/<view>` (ids from 200).
+- `page.compose` relays the signed `Render.Entry` answer each holder announces with its lease (the node's signature
+  over the entry, as the shell verifies), filtered by the caller's render rights; it makes no call of its own.
+- The anonymous chain is minted by `fe.visitor` (`Anon`: same proof of work and mint limit, `ANONYMOUS_RIGHTS`,
+  no count, 15 minutes). `http.serve` holds one and caches answers named by hash.
+- The shell's files are parts of the `fe.shell` entry by sha256; a node installs them by hash and keeps the bytes
+  in its content store, so the gate decision is in the logged, replayable input while the bytes are attached by the
+  node after it. The in-browser sim's bundle inputs (`bundles/`) are parts only of the static export.
+- Each node still has its mesh port (signed frames from roster members only). P13 lists every listener per node
+  process: one HTTP listener on the mesh, owned by `http.serve`; every other socket is a roster mesh port. The local
+  controller of `cargo cell dev|record` keeps its control endpoint for the page's operator buttons; it is not a
+  node, does not exist in live mode or on Pages, and opens its socket through the `http.serve` crate.
 
 Open points of section 13, settled: `ce-net/live-refs` is public and pinned by rev. Frame isolation is measured per
 browser and stated on the page (Chromium: the shell keeps running; Firefox: a tight loop pauses the page; a thrown
