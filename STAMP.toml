@@ -10,6 +10,6 @@ version = "0.1.0"
 access = "public"
 canonical_of = []
 duplicate_of = ""
-owner = "foreman/lead"
+owner = "ce-net"
 source_of_truth = "https://github.com/ce-net/live-frontend"
 stale_after = 180
