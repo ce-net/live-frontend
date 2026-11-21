@@ -5,8 +5,15 @@ typed contract, its own node and its own version. The page starts empty: cells a
 capability chain the browser holds decides which of them it is ever sent. A cell can be replaced, replicated,
 refused or revoked while the rest of the page keeps running. Nothing is recompiled to add a feature.
 
-- The page: <https://ce-net.github.io/live-frontend/>. It runs the whole system in your browser: four nodes, each
-  a Web Worker running the same node code compiled to wasm, serving UI cells and their backends. The controls
+Everything is a cell and a capability. A view is three ops of its own backend cell (`Render.Entry`,
+`Render.Bundle`, `Render.Html` under `<cell>:render:<view>`), so a view a chain may not see is refused by the
+ordinary gate. `page.compose` answers each chain the views it may render; the page itself is the `fe.shell` view;
+one `http.serve` cell is the only thing that speaks HTTP. There is no app server and no route table.
+
+- The page: <https://ce-net.github.io/live-frontend/>. The site is what the `http.serve` cell answers the anonymous
+  chain, written to files (`cargo cell export`; `served.json` names the render or compose step behind every file).
+  It runs the whole system in your browser: four nodes, each a Web Worker running the same node code compiled to
+  wasm, serving UI cells and their backends. The controls
   change the nodes underneath the page. Below it, the recorded run of real processes is checked in your browser,
   and "Replay" re-executes every input those processes logged.
 - The index of live systems with every card a cell: <https://ce-net.github.io/live-frontend/systems.html>.
@@ -21,7 +28,7 @@ git clone https://github.com/ce-net/live-frontend && cd live-frontend
 npm ci --prefix web
 cargo build --release --workspace
 cargo cell build          # TypeScript clients from the contracts, every UI bundle, the page, the wasm node
-cargo cell dev            # four node processes; open http://127.0.0.1:21200/
+cargo cell dev            # four node processes; open http://127.0.0.1:21200/ (served by the http.serve cell)
 ```
 
 `cargo cell dev` watches `cells/`. Change `cells/notes/ui/src/board.ts` and only that cell is rebuilt and
@@ -31,41 +38,47 @@ re-announced; the open page swaps that one panel and keeps what you were typing.
 The other commands:
 
 ```sh
-cargo cell check          # every contract against contracts/frozen, slot prop types, decl.lint on the views
+cargo cell check          # every contract against contracts/frozen, slot capabilities and props, the issuer's grant
+                          # table against every view, only http.serve opens a listener, decl.lint on the views
 cargo cell break-proof    # three contract breaks that must fail the build (Rust, the check, and the TypeScript views)
 cargo test --workspace --release
 cargo cell record         # the recorded run below: real processes, a headless browser (LF_BROWSERS=chromium,firefox)
 cargo cell verify proof   # signatures, hash chain, and every logged input re-executed to the same bytes
 cargo cell new <name>     # a new cell pair and UI directory from the template
+cargo cell export [out]   # the Pages site: http.serve's answers for the anonymous chain, as files (web/site)
 ```
 
 ## What the recorded run shows
 
 `proof/` is one run of four real node processes on loopback (each with its own Ed25519 key, every frame signed)
-driven by headless Chromium; `proof/firefox/` is the same run in Firefox. Twelve steps, each asserted and signed
-into `proof/run.jsonl`:
+driven by headless Chromium; `proof/firefox/` is the same run in Firefox. Both were recorded by CI on commit
+`35b5864`. Sixteen steps, each asserted and signed into `run.jsonl`; 16 of 16 pass in each browser:
 
-| Step | What happens | Recorded (Chromium) |
+| Step | What happens | Recorded (Chromium; Firefox where it differs) |
 |---|---|---|
-| P1 | page opened with no chain | 0 frames, 0 bundles fetched |
-| P2 | join as a visitor | 9 cells mounted; `ops.panel` absent from the manifest; a direct fetch of its bundle hash refused by the gate |
-| P3 | the `faults` backend starts on node b while the page is open | its panel appears, no reload |
-| P4 | `notes` 1.0 to 1.1, node by node | only that panel boots again, in 73 ms; the half-typed draft survives; 8 of 8 other cells untouched, none missed a beat |
-| P5 | `notes` 2.0 (a field changes meaning) beside 1 | two panels on the same rows, colour by name in 1 and as RGB in 2; panel 1 leaves at its end time |
-| P6 | node c serves the bundle with one byte changed | refused (want and got differ), reported, loaded from another holder |
+| P1 | page opened with no chain | 0 frames, 0 bundles fetched (the first paint is `Render.Html` from each public cell) |
+| P2 | join as a visitor | 9 cells mounted in 337 ms; `ops.panel` absent from `page.compose`; `ops Render.Bundle` of its hash refused by node a's gate (`need: "ops:render:panel"`) |
+| P3 | the `faults` backend starts on node b while the page is open | its panel appears 487 ms later, no reload |
+| P4 | `notes` 1.0 to 1.1, node by node | only that panel boots again, in 36 ms (Firefox 28 ms); the half-typed draft survives; 8 of 8 other cells untouched |
+| P5 | `notes` 2.1 (a field changes meaning) beside 1 | two panels on the same rows, colour by name in 1 and as RGB in 2; panel 1 leaves at its end time |
+| P6 | node c serves the bundle with one byte changed | refused (want and got differ), reported to `page.compose`, loaded from another holder |
 | P7 | a cell tries an undeclared call, a fetch, the parent page, storage | refused at the bus; no network in the frame; opaque origin |
 | P8 | a cell throws, then runs a 4 s tight loop | the throw: that frame restarts alone with its saved state. The loop: see below |
-| P9 | node b is stopped while `status.panel` streams from it | the next answer comes from c 490 ms after the kill, no reload; a write retried with the same op id is applied once |
-| P10 | `notes.board` opens its typed `trend` slot | `trend.chart` mounts in its own frame from node c; wrong prop types refused |
+| P9 | node b is stopped while `status.panel` streams from it | the next answer comes from c 238 ms after the kill (Firefox 490 ms), no reload; a write retried with the same op id is applied once |
+| P10 | `notes.board` opens its typed slot `render "trend:render:chart"` | `trend.chart` mounts in its own frame from node c; wrong prop types refused |
 | P11 | allowed write, `notes.Purge`, spending the counted uses | `Refused{need: "notes:admin", chain: …, node: …}` printed verbatim; `uses exhausted (40 of 40 spent)` |
-| P12 | the visitor revokes its chain | the next call is refused by the gate; every panel leaves the page |
+| P12 | the visitor revokes its chain | the next call is refused by the gate; every panel leaves the page (1223 ms) |
+| P13 | every listening socket of every node process (`ss -ltnp`) | one HTTP listener, owned by `http.serve` on d; every other socket is a node's mesh port from the roster; each of the 14 paths the browser received maps to a render or compose step (cell, node, sha256) |
+| P14 | the tree `page.compose` gives the visitor | no `ops` entry, and no allowed `ops:render:panel` call from this chain in the gate log; the in-process test `p14_…` shows the tree is byte-identical to one composed on a mesh that never ran `ops` |
+| P15 | a second cell offering `trend:render:chart` starts on a, the first stops on c | the slot in `notes.board` is filled from a (4.9 s: the old holder's 5 s lease ending); the parent's boot counter is unchanged |
+| P16 | `notes` 1.2 (the release that carries the render ops) over 1.1 | a minor swap like P4: one panel boots again in 36 ms, the draft is kept, 8 of 8 other cells untouched |
 
 `cargo cell verify proof` re-creates the four nodes from the run's seed and re-executes every input each process
 logged (thousands of frames, ticks and replies): all outputs are byte-identical. The page does the same in the
 browser with the wasm build.
 
 A tight loop inside a cell (P8) is measured, not hidden. In Chromium the shell keeps running (its thread stalled
-3 ms) while the cell frames, which share renderer processes, pause for the 4.5 s of the loop. In Firefox a
+0 ms in this run) while the cell frames, which share renderer processes, pause for the 4.8 s of the loop. In Firefox a
 sandboxed frame runs on the page's own thread, so the whole page pauses for the loop. A thrown error is isolated
 in both.
 
@@ -76,7 +89,8 @@ in both.
 | One contract, both halves: `lf_contract::contract!` takes the `ce_wire::api!` text (compiled by [wire-lite](https://github.com/ce-net/live-refs/tree/main/crates/wire-lite), same api name, op ids, rights, schema hash) plus a `ui { }` block (view, needs, data, tries, streams, props, state, slots, events). The build fails when a view reads an op whose right it does not declare. | `crates/lf-contract` |
 | Chains: root, issuer, visitor; expiry, holder, counted uses, rate, a row caveat (`sandbox == <visitor>`) | `crates/fe-chain` |
 | The gate on every node: chain, revocation, holder signature over the exact call, replay, right, rate, issuer-signed spend tickets; one refusal shape | `crates/fe-gate` |
-| Runtime cells: `fe.manifest` (signed entries, 5 s lease, answered per viewer), `fe.serve` (bundles by hash, `may_fetch`), `fe.visitor` (issuer), `fe.history` (hash-chained log), `fe.explain`, `fe.door` | `crates/fe-runtime`, `crates/fe-host` |
+| Runtime cells: `page.compose` (signed `Render.Entry` answers with a 5 s lease, answered per chain by render right), `fe.shell` (the page as a view, its files by hash), `fe.visitor` (issuer of visitor and anonymous chains), `fe.history` (hash-chained log), `fe.explain` | `crates/fe-runtime`, `crates/fe-host` |
+| `http.serve`: the one cell that speaks HTTP (`/` composed for the anonymous chain, `/_c/<sha256>` immutable, the shell's files, `/door` for signed frames); the only listener in the repository | `cells/http/cell` |
 | One node as a pure state machine (input to output, no clock or I/O inside) | `crates/fe-host` |
 | The node as a process behind a [sim-mesh](https://github.com/ce-net/live-refs/tree/main/crates/sim-mesh) door, and in the browser as wasm | `crates/fe-node`, `crates/sim-wasm` |
 | UI cells and backends | `cells/{notes,status,trend,faults,ops,systems}/{api,cell,ui}`, `cells/{timeline,inspect}/ui` |
@@ -100,9 +114,11 @@ those gates: join (root, issuer, this browser's WebCrypto key), `ops.panel` abse
 allowed, `notes.Purge` refused verbatim, the 40 uses running out, revocation emptying the page; 4 of 4 steps pass,
 checked by signature (live inputs are not re-executed, since their keys are gone).
 
-Not open yet: the issuer under the ce-net site root, the same chain checked by a second (desk) node's gate, and a
-public route to the live door, so the Pages site can offer "Live nodes" next to the in-browser sim
-([docs/DESIGN.md](docs/DESIGN.md) section 7.3).
+Not open yet: the issuer under the ce-net site root, the cells installed on the two real nodes (the cloud node, then
+the desk node) so one chain is checked by two gates, and the public `http-serve` route, so the Pages site can offer
+"Live nodes" next to the in-browser sim. These three wait on one approval; until then the page offers the sim and
+the replay only ([docs/DESIGN.md](docs/DESIGN.md) section 17). The live run above was recorded before views
+became render capabilities.
 
 ## License
 

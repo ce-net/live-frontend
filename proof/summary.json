@@ -1,17 +1,21 @@
 {
   "browsers": [
-    "firefox"
+    "chromium"
   ],
   "cells_untouched_during_swap": "8 of 8",
-  "failover_ms": 144,
-  "hot_swap_ms": 218,
-  "max_other_beat_gap_ms": 577,
-  "page_errors_firefox": 1,
-  "recorded": "2026-11-21T05:14:49.599Z",
+  "failover_ms": 238,
+  "hot_swap_ms": 36,
+  "max_other_beat_gap_ms": 511,
+  "page_errors_chromium": 1,
+  "recorded": "2026-11-21T05:26:03.486Z",
   "steps": "16 of 16 pass",
-  "tight_loop_firefox": {
-    "frames_paused": null,
-    "shell_stall_ms": 3960
+  "tight_loop_chromium": {
+    "frames_paused": {
+      "frames": 10,
+      "ms": 4796,
+      "of": 10
+    },
+    "shell_stall_ms": 0
   },
-  "verify": "run.jsonl: 16 signed steps, chain intact, all signed by the recorder ed25519:d915d8361298\nnode a: 699 of 699 logged inputs re-executed to the same output bytes\nnode b: 672 of 672 logged inputs re-executed to the same output bytes\nnode c: 677 of 677 logged inputs re-executed to the same output bytes\nnode d: 1655 of 1655 logged inputs re-executed to the same output bytes"
+  "verify": "run.jsonl: 16 signed steps, chain intact, all signed by the recorder ed25519:3b5a8a8a403b\nnode a: 682 of 682 logged inputs re-executed to the same output bytes\nnode b: 660 of 660 logged inputs re-executed to the same output bytes\nnode c: 660 of 660 logged inputs re-executed to the same output bytes\nnode d: 1587 of 1587 logged inputs re-executed to the same output bytes"
 }

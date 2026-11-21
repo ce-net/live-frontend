@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "class": "sim",
+      "fp": "d290324b4e31",
+      "key": "bb74a7653ed2940ccc6e735ec544b3d83cc6df14245b2110ed8012beb8077585",
+      "name": "a"
+    },
+    {
+      "class": "sim",
+      "fp": "8fefd1fe383a",
+      "key": "e2d74d6641a9a64c48b5dcc5499e2649123c77123c775e746416162c796640be",
+      "name": "b"
+    },
+    {
+      "class": "sim",
+      "fp": "0228e20238e0",
+      "key": "7306c13c4f6daa65abdcf7d568365ba2c651462525e8bf89778bbadd9c68f778",
+      "name": "c"
+    },
+    {
+      "class": "sim",
+      "fp": "7242e569bb0b",
+      "key": "76bb54d6c765a84638e2343c3ebc0049d5b3e2a3003ca62b939eb0cadc2ff719",
+      "name": "d"
+    }
+  ],
+  "note": "sim keys: every key of this run is derived from the seed above, so anyone can re-create the nodes and re-execute the inputs",
+  "recorder": "ed25519:b8d92187a3e8f3bd9f818b741fb885e9cbb08484c28097911934fb8a84073583",
+  "root": "d27b50c86d1452eeaf28d436cc615d1cd0908aec8811804bb79b493f0d16a841",
+  "seed": "record-firefox-1795238764",
+  "t0": 1795238764233
+}
