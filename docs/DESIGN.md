@@ -1,4 +1,4 @@
-# live-frontend: a frontend that is a typed network of cells (design, 2026-11-16)
+# live-frontend: a frontend that is a typed network of cells (design, 2026-11-16; revision 2 on 2026-11-21)
 
 A page that is not one program. Every panel is a UI cell with its own backend cell, its own typed contract, its own
 node and its own version. The page starts empty. Cells announce themselves, the viewer's capability chain decides
@@ -6,6 +6,9 @@ which of them the viewer is ever sent, and a cell can be replaced, replicated, r
 the page keeps running. Nothing is recompiled to add a feature: features are discovered.
 
 Public repo `ce-net/live-frontend`, Apache-2.0. Public text says "live system". Light theme by default.
+
+Revision 2 (sections 14 to 17) records what is built, and changes the runtime to one rule: everything is a cell
+and a capability. Where a section below disagrees with section 15, section 15 wins.
 
 ## 0. What exists and is reused
 
@@ -356,3 +359,158 @@ One screen, light theme, the tokens and components of `repo:demos`.
   shown there by the sim nodes and proven on real nodes only in live mode.
 - Determinism of the browser replay needs a seeded clock and seeded keys in the sim nodes; live steps are verified
   by signature only, not re-executed.
+
+## 14. Status on 2026-11-21
+
+| Part | State |
+|---|---|
+| Sections 2 to 4, 8, 9: eight UI cells, contracts, chains, gate, shell with one sandboxed frame per cell, `cargo cell` | built; CI green on `0db0df4` |
+| Recorded run P1 to P12, four real processes, Chromium and Firefox | in `proof/`, 12 of 12 each, re-executed byte for byte by `cargo cell verify` and by the page |
+| Pages: browser sim (four wasm nodes) and replay | up |
+| Index as cells | built as `systems.html` in this repo; the page of `ce-net/demos` itself is still a static list (section 16) |
+| Headline card on the index | present |
+| Live nodes | one recorded run on one cloud node, keys drawn in memory (`proof/live-2026-11-16/`, 4 of 4 by signature); not under the ce-net root, no second gate, no public route (section 17) |
+| Rule of section 15 | not met: bundles are served by `fe.serve`, the page by a small HTTP server inside `fe-node`, the manifest by a registry; none of them is a capability of the cell that owns the view |
+
+Open points of section 13, settled: `ce-net/live-refs` is public and pinned by rev. Frame isolation is measured per
+browser and stated on the page (Chromium: the shell keeps running; Firefox: a tight loop pauses the page; a thrown
+error is isolated in both). The public door's join is made for agents and carries tool rights, not page rights, so
+it is not used for visitors: `fe.visitor` mints (7.1).
+
+## 15. Everything is a cell and a capability
+
+The frontend is nothing but capabilities of backend cells. A cell renders its own part as a capability; aggregator
+cells compose those into panels, tabs and pages, again as capabilities; one final aggregator holds the
+`http-serve` capability. There is no app server, no route table written by hand, and no runtime piece that is not
+a cell behind a gate.
+
+### 15.1 `render:*`: the view is an op of its own backend cell
+
+The `ui { }` block no longer expands to a side table. Each `view` expands to three ops of the same api, under one
+right `<cell>:render:<view>`:
+
+| Op | Returns | Replaces |
+|---|---|---|
+| `Render.Entry{view}` | the signed `Entry` of 3.2 for this viewer (bundle ce-ref and sha256, props, slots, speaks, state schema, holders) | `fe.manifest Announce` |
+| `Render.Bundle{sha256}` | the view's code, by hash | `fe.serve Fetch` and `may_fetch` |
+| `Render.Html{props}` | a static fragment and its sha256, for first paint and for readers without scripts | nothing (new) |
+
+```rust
+contract! { notes @ 1.2;                    // additive: a minor bump, checked by `cargo cell check`
+  ops { 1 List .. 9 Purge ..  }              // unchanged
+  ui {
+    view board { needs "notes:render:board"; data List, Put; streams Watch; state Draft;
+      slot trend: render "trend:render:chart" { props TrendProps };   // a slot names a capability, not a cell
+      speaks NoteAdded { id: NoteId };
+    }
+  }
+}
+```
+
+Consequences:
+
+- "A cell the viewer may not see is never sent" is now the ordinary gate: `ops:render:panel` is not in any visitor
+  chain, so `Render.Entry` and `Render.Bundle` are refused with the same refusal text as any other op.
+- The build still fails when a chain could hold `render:<view>` without the rights of that view's `data` ops: the
+  issuer's grant table is checked against every view (`cargo cell check`).
+- A replica that serves the data serves the view. Three replicas of `status` are three holders of
+  `status:render:panel`; failover of the bundle and of the data is the same mechanism (4.5).
+- A slot is typed by a render capability and a props type. Any cell that offers `trend:render:chart@1` with
+  `TrendProps` can fill it; the parent does not know which cell or node did.
+
+### 15.2 Aggregators: `compose:*`
+
+An aggregator is a cell whose ops call `render:*` of other cells with the viewer's chain, narrowed, and return a
+tree of entries. It holds no right over the viewer's data and adds none: what it cannot get for this viewer is not
+in its answer.
+
+| Aggregator | Capability | Composes | Replaces |
+|---|---|---|---|
+| a view with slots (`notes.board`, `status.panel`) | its own `render:<view>` | the render capability named by each slot | slot wiring in the shell |
+| `page.compose@1` | `page:compose:resolve`, `:watch` | every render capability announced on the mesh that the chain may call, as tabs and panels; `Appeared`, `Changed`, `Gone` | `fe.manifest` |
+| `index.compose@1` | `index:compose:resolve`, `:watch` | one `systems:render:card` per live system (section 16) | the card list |
+| `fe.shell@1` | `shell:render:page` | the empty page: loader, bus, sandbox (4.1 to 4.5), as a bundle by hash like any view | the page files |
+
+Discovery stays as it is: a serving cell announces `(api, view, holders, lease 5 s)` signed by its node key; the
+announcement carries no bundle and no right. `page.compose` asks `Render.Entry` with the viewer's chain only for
+announcements that chain could call, so a refused view leaves no trace in the viewer's answer. A test keeps the
+old property: a visitor's tree is byte-identical to one composed on a mesh that never ran `ops`.
+
+### 15.3 `http.serve@1`: the one cell that speaks HTTP
+
+| Route | What it does | Chain |
+|---|---|---|
+| `GET /` | `page.compose Resolve`, then `shell:render:page`, then `Render.Html` of each public view inlined | the anonymous chain (public table of `fe.visitor`) |
+| `GET /_c/<sha256>` | `Render.Bundle` of the owning cell, any holder; `Cache-Control: immutable` | the caller's chain; public views only are cacheable |
+| `GET /wire` (socket) | forwards signed frames to cells; holds no right of its own | the caller's chain, checked again by every gate |
+
+`http-serve` is a capability granted by the node to this one cell: `http-serve where route == "/live-frontend/*"`.
+`fe.door` and the HTTP code in `fe-node` move into it. `cargo cell check` fails when any other crate opens a
+listening socket, and proof step P13 reads each node's listener set from the roster. The Pages site is this cell's
+output for the anonymous chain, written to files by `cargo cell export` and said so on the page; a static host
+cannot refuse, so refusal is shown there by the sim nodes and on real gates in live mode (section 13).
+
+### 15.4 Added proof steps
+
+| Step | Action | Assertion |
+|---|---|---|
+| P13 | list every listener on every node | exactly one, owned by `http.serve`; every byte the browser received maps to a `render:*` or `compose:*` step with cell, node and sha256 |
+| P14 | compose the page for a visitor and for an operator chain (sim keys) | the visitor tree has no `ops` node and equals the tree of a mesh without `ops`; the gate log holds no call to `ops:render:panel` from the visitor |
+| P15 | start a second cell offering `trend:render:chart` on another node, stop the first | the slot in `notes.board` is refilled from the new cell; the parent's boot counter is unchanged |
+| P16 | deploy `notes@1.2` (the `render` ops) over 1.1 | minor swap as P4: one panel boots, draft kept |
+
+### 15.5 Developer loop additions
+
+`cargo cell dev` is unchanged for the developer; underneath, a rebuilt view is a new answer of `Render.Entry`.
+`cargo cell check` adds: listener rule (15.3), grant table against views (15.1), slot capability and props type
+across cells, and "no view without a backend cell". `cargo cell new` creates the cell with one `render` view.
+`cargo cell export` writes the Pages site.
+
+## 16. The index of live systems, on cells, in `ce-net/demos`
+
+- `ce-net/demos/index.html` becomes the output of `http.serve` for the route `/` of `index.compose`: the shell
+  bundle (pinned by sha256, loaded from this repo's release with an integrity attribute), `holders.json`, and the
+  `Render.Html` fragments as the list for readers without scripts. Nothing on the page names a live system.
+- Each live system offers `systems:render:card` itself: its repo publishes `ce-ui.json` (signed entry) and the
+  card bundle on its own Pages site, and, when it runs on real nodes, the same capability from its own cell. A new
+  system appears without a commit to the index; a bad signature or hash is shown as refused with want and got.
+- The headline card (`live-frontend`) fills its `preview` slot with `fe.history:render:lanes`: the recorded run
+  playing as lanes of nodes and versions (`notes` 1.0, 1.1, 2.0 beside 1, 1.2; a replica of `status` lost and
+  back), so one system is seen changing over time on the index itself. In live mode the lanes are the real nodes.
+- The chain chip is on the index too: each card shows the right that let it appear
+  (`systems:render:card where system == <id>`), and revoking the chain empties the index.
+- `demos.json` stays as a file generated from the entries.
+
+## 17. Live path: real chains on real gates
+
+Order: the cloud node first, the desk node second. Both run the cells of section 2, `page.compose`,
+`index.compose`, and one `http.serve`. Nodes appear on the page as class and key fingerprint.
+
+```
+ce-net site root
+ └─ fe.visitor issuer        the rights below only; <= 500 chains/day; one link deep; until +90 days; revocable
+     └─ visitor <fingerprint>     holder == this browser's key; until +15 min; count 40; rate 2/s
+          ├─ systems:render:card, status:render:panel, trend:render:chart, fe.history:render:lanes,
+          │  inspect:render:chain, page:compose:*, index:compose:*, shell:render:page   and their read ops
+          ├─ notes:render:board, notes:read, notes:write    where sandbox == <fingerprint>
+          └─ faults:render:panel, faults:run                where session == <fingerprint>
+```
+
+- Safety of the public path: read-only or own-sandbox rights only; per address 3 joins an hour and a small proof
+  of work; sandbox rows capped (20 rows, 200 bytes) and deleted when the chain ends; `fe.visitor:admin Pause`
+  stops minting; revoking the issuer link at the root ends every visitor chain at once; the cells run as their own
+  unprivileged identity with no other grant on the node. No owner, operator or agent right is reachable.
+- The page pins the root public key and the two node fingerprints (`live.json`) and verifies the chain it was
+  given before showing it. `cap.inspect` shows issuer, links, rights, caveats, expiry countdown, uses left, and
+  under each cell the render right that let it appear and the fingerprints of the gates that checked it.
+- Recorded as `proof/live-<date>/`: L1 join; L2 the same chain accepted by both gates; L3 allowed write;
+  L4 `notes.Purge` and `ops:render:panel` refused, text verbatim; L5 count exhausted; L6 revoke, panels leave;
+  L7 one node stopped, panels continue from the other. Checked by signature against the pinned keys.
+- One approval card (`grant.bundle`), three items as in 7.3, with the rights of the tree above: the issuer link
+  under the site root; install of the pinned cells on the two nodes; the `http-serve` route
+  `wss` and `https` under a ce-net host name for `/live-frontend/*`. Until it is approved the page offers sim and
+  replay only and says so; "Live nodes" appears when `live.json` is present and the door answers.
+
+Slices from here: (5) `render` ops, `page.compose`, `http.serve`, `fe.shell`, P13 to P16, export; (6) index in
+`ce-net/demos`, `ce-ui.json` in each live system, lanes in the headline card; (7) the approval card, cloud node,
+then desk node, `proof/live-<date>/`, "Live nodes" on Pages.
