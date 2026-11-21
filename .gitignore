@@ -5,3 +5,4 @@ web/dist/
 *.pid
 /run/
 /run-live/
+web/site/

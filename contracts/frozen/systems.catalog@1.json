@@ -1,7 +1,7 @@
 {
   "api": "systems.catalog",
   "major": 1,
-  "minor": 0,
+  "minor": 1,
   "ops": [
     {
       "id": 1,
@@ -10,6 +10,30 @@
       "req": "()",
       "resp": "Vec<System>",
       "right": "systems.catalog:read"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/systems.card",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "systems.catalog:render:card"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/systems.card",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "systems.catalog:render:card"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/systems.card",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "systems.catalog:render:card"
     }
   ],
   "schema": "dc09b270be2c4edf",
@@ -26,6 +50,7 @@
       ],
       "place": "cards",
       "props": "()",
+      "render": "systems.catalog:render:card",
       "slots": [],
       "speaks": [
         "Open"

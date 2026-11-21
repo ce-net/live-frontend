@@ -1,5 +1,5 @@
 {
-  "api": "fe.door",
+  "api": "http.serve",
   "major": 1,
   "minor": 0,
   "ops": [
@@ -9,7 +9,7 @@
       "name": "Hello",
       "req": "()",
       "resp": "Welcome",
-      "right": "fe.door:hello"
+      "right": "http.serve:hello"
     },
     {
       "id": 2,
@@ -17,10 +17,10 @@
       "name": "Call",
       "req": "Routed",
       "resp": "serde_json::Value",
-      "right": "fe.door:call"
+      "right": "http.serve:call"
     }
   ],
-  "schema": "564a21bab45b0882",
+  "schema": "8555c03984a6170e",
   "types": "pub struct NodeInfo\n{ pub name: String, pub class: String, pub key: String, pub fp: String }\npub struct Welcome\n{\n    pub root: String, pub nodes: Vec<NodeInfo>, pub door: String, pub mode:\n    String\n} pub struct Routed { pub to: String, pub vc: fe_gate::VisitorCall }",
   "views": []
 }

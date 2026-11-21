@@ -1,6 +1,6 @@
 //! status: which nodes are alive, from the beats every node sends. Served by three replicas.
 lf_contract::contract! {
-    api Status = "status", version 1, minor 0;
+    api Status = "status", version 1, minor 1;
     types {
         pub struct NodeRow { pub node: String, pub alive: bool, pub age_ms: u64, pub calls: u64 }
         pub struct From { pub seq: u64 }
@@ -11,9 +11,9 @@ lf_contract::contract! {
         2 => Watch(From) -> Board, needs "status:read";
     }
     ui {
-        view "status.panel" place "main" {
+        view "status.panel" place "main" render "status:render:panel" {
             needs ["status:read"]; data [Read]; tries []; streams [Watch];
-            props "()"; state "()"; slots [trend: "trend.chart" ("TrendProps")]; speaks []; hears [];
+            props "()"; state "()"; slots [trend: render "trend:render:chart" ("TrendProps")]; speaks []; hears [];
         }
     }
 }

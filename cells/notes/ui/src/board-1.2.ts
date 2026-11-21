@@ -1,5 +1,5 @@
 import { cell } from '../../../../web/cell-rt';
-import { client, slots } from '../gen/notes_2_0';
+import { client, slots } from '../gen/notes_1_2';
 import { board } from './board';
 
 cell((cx) => {
@@ -7,10 +7,10 @@ cell((cx) => {
   const s = slots(cx);
   board(cx, {
     list: () => api.List(),
-    put: (op_id, d) => api.Put({ op_id, note: { id: d.id, text: d.text, rgb: d.rgb ?? null } }),
+    put: (op_id, d) => api.Put({ op_id, note: { id: d.id, text: d.text, colour: d.colour ?? null } }),
     since: (seq) => api.Since({ seq }),
     purge: () => api.Purge(),
     trend: (series) => s.trend({ series }),
-    colours: 'rgb',
+    colours: 'name',
   });
 });

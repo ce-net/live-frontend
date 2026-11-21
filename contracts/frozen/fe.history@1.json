@@ -1,7 +1,7 @@
 {
   "api": "fe.history",
   "major": 1,
-  "minor": 0,
+  "minor": 1,
   "ops": [
     {
       "id": 1,
@@ -26,6 +26,30 @@
       "req": "From",
       "resp": "Events",
       "right": "fe.history:read"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/timeline.view",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "fe.history:render:timeline"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/timeline.view",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "fe.history:render:timeline"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/timeline.view",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "fe.history:render:timeline"
     }
   ],
   "schema": "4f22931816a368a6",
@@ -42,6 +66,7 @@
       ],
       "place": "bottom",
       "props": "()",
+      "render": "fe.history:render:timeline",
       "slots": [],
       "speaks": [],
       "state": "()",

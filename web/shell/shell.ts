@@ -1,14 +1,15 @@
-// The shell. It has no list of cells: it watches fe.manifest with the viewer's chain and mounts whatever it is
-// sent, each UI cell in its own sandboxed frame, joined to the world by one MessagePort to this bus. The bus lets
+// The shell. It has no list of cells: it asks page.compose for the tree its viewer's chain may render and mounts
+// whatever it is sent, each UI cell in its own sandboxed frame, joined to the world by one MessagePort to this bus. The bus lets
 // a cell make only the calls, events and slot openings its signed manifest entry declares; the node's gate checks
 // every call again. A changed entry swaps that one cell, with its state; a crashed cell restarts alone; a call to a
 // holder that stopped moves to the next holder.
 import { b64decode, hex, sha256, type Door, type DoorReply } from './door';
 import { Identity, verifyEd25519 } from './identity';
 
-export interface SlotDecl { name: string; view: string; props: string }
+export interface SlotDecl { name: string; render: string; props: string }
 export interface EntryBody {
-  view: string; instance: string; api: string; version: string; schema: string; bundle: string; bundle_ref: string;
+  view: string; instance: string; api: string; version: string; schema: string; render: string; bundle: string; bundle_ref: string;
+  parts: [string, string][];
   needs: string[]; place: string; data: string[]; tries: string[]; streams: string[]; props: string;
   props_fields: [string, string][]; state: string; slots: SlotDecl[]; speaks: string[]; hears: string[];
   supersedes: string | null; until: number | null; label: string;
@@ -145,16 +146,16 @@ export class Shell {
     if (this.resolving || !this.chain) return;
     this.resolving = true;
     try {
-      const r = await this.call(null, 'd', 'fe.manifest@1', 'Resolve', null);
+      const r = await this.call(null, 'd', 'page.compose@1', 'Resolve', null);
       if (r.transport) return;
       if (!r.ok) {
-        this.event('Refused', 'fe.manifest', { why: r.refused });
+        this.event('Refused', 'page.compose', { why: r.refused });
         await this.leaveAll(r.refused ?? 'refused');
         return;
       }
       const entries = r.body.entries as Entry[];
       this.entries = entries;
-      const want = new Map(entries.filter((e) => e.body.place !== 'slot').map((e) => [keyOf(e), e]));
+      const want = new Map(entries.filter((e) => e.body.place !== 'slot' && e.body.place !== 'page').map((e) => [keyOf(e), e]));
       for (const [k, m] of this.mounted) {
         const e = want.get(k);
         if (!e) {
@@ -171,7 +172,9 @@ export class Shell {
       // slot children follow their entry too
       for (const m of this.mounted.values())
         for (const c of m.children.values()) {
-          const e = entries.find((x) => x.body.view === c.entry.body.view);
+          // a slot is filled by whichever cell offers its render capability now (another node, another cell)
+          const decl = m.entry.body.slots.find((s) => m.children.get(s.name) === c);
+          const e = entries.find((x) => x.body.render === (decl ? decl.render : c.entry.body.render));
           if (!e) this.unmount(c, 'gone');
           else if (e.body.bundle !== c.entry.body.bundle) void this.swap(c, e);
           else c.entry = e;
@@ -204,7 +207,7 @@ export class Shell {
     for (const h of e.holders) {
       const k = `${h.node}|${e.body.bundle}`;
       if (this.bad.has(k)) continue;
-      const r = await this.call(null, h.node, 'fe.serve@1', 'Fetch', { sha256: e.body.bundle });
+      const r = await this.call(null, h.node, e.body.api, 'Render.Bundle', { sha256: e.body.bundle });
       if (r.transport || !r.ok) continue;
       const bytes = b64decode(r.body.b64);
       const got = hex(await sha256(bytes));
@@ -214,7 +217,7 @@ export class Shell {
         this.stats.refusedBundles++;
         const d = { holder: h.node, want: e.body.bundle, got };
         this.event('Refused', e.body.view, { ...d, why: 'bundle sha256 does not match the signed entry' });
-        void this.call(null, 'd', 'fe.manifest@1', 'Report', { view: e.body.view, bundle: e.body.bundle, holder: h.node, why: `sha256 ${got.slice(0, 12)} != ${e.body.bundle.slice(0, 12)}` });
+        void this.call(null, 'd', 'page.compose@1', 'Report', { view: e.body.view, bundle: e.body.bundle, holder: h.node, why: `sha256 ${got.slice(0, 12)} != ${e.body.bundle.slice(0, 12)}` });
         continue;
       }
       return bytes;
@@ -400,13 +403,13 @@ export class Shell {
           this.event('NotDeclared', e.view, { slot: d.name });
           return;
         }
-        const child = this.entries.find((x) => x.body.view === decl.view);
+        const child = this.entries.find((x) => x.body.render === decl.render);
         const region = m.slots.get(decl.name);
         if (!child || !region) {
           if (region) region.dataset.state = 'empty';
           return;
         }
-        const why = propsMismatch(child.body, d.props);
+        const why = child.body.props !== decl.props ? `${decl.render} is offered with ${child.body.props}, the slot takes ${decl.props}` : propsMismatch(child.body, d.props);
         if (why) {
           this.event('SlotTypeMismatch', e.view, { slot: d.name, why });
           return;

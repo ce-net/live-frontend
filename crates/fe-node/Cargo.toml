@@ -12,5 +12,6 @@ serde_json.workspace = true
 sha2.workspace = true
 hex.workspace = true
 fe-host.workspace = true
+http-serve-cell.workspace = true
 sim-mesh.workspace = true
 ed25519-dalek = { version = "2" }

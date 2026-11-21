@@ -1,7 +1,7 @@
 //! `cargo cell <command>` (alias in .cargo/config.toml).
 mod check;
+mod export;
 mod gen;
-mod http;
 mod run;
 mod verify;
 
@@ -38,6 +38,8 @@ const HELP: &str = "cargo cell <command>
   verify [dir]        signatures, hash chain, and re-execution of every logged input
   break-proof         three contract breaks that must fail: a renamed field (check and the TypeScript views),
                       a view that reads an op it does not declare the right for (the Rust build)
+  export [out]        the Pages site: what the http.serve cell answers the anonymous chain, written to files
+                      (default web/site), with served.json naming the render or compose step behind each file
   vendor-check        sha256 of every vendored file against web/vendor/*/VENDOR.json";
 
 fn main() {
@@ -77,6 +79,16 @@ fn main() {
         },
         Some("build") => build(&r, args.iter().any(|a| a == "--pages")),
         Some("vendor-check") => vendor_check(&r),
+        Some("export") => match export::run(&r, &args.get(1).map(PathBuf::from).unwrap_or_else(|| r.join("web/site"))) {
+            Ok(s) => {
+                println!("{s}");
+                0
+            }
+            Err(e) => {
+                eprintln!("export: {e}");
+                1
+            }
+        },
         Some("break-proof") => break_proof(&r),
         Some("new") => new_cell(&r, args.get(1).map(String::as_str).unwrap_or("")),
         Some("sim") => sim(&r, false, false),
@@ -104,6 +116,18 @@ fn main() {
     std::process::exit(code);
 }
 
+/// The commit the bundles are built from (all zeros outside a git checkout).
+pub fn commit(root: &Path) -> String {
+    Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|| "0".repeat(40))
+}
+
 fn sh(c: &mut Command) -> bool {
     c.status().map(|s| s.success()).unwrap_or(false)
 }
@@ -120,7 +144,8 @@ fn build(r: &Path, pages: bool) -> i32 {
     }
     let ok = sh(Command::new("cargo").args(["build", "-q", "--profile", "wasm", "--target", "wasm32-unknown-unknown", "-p", "sim-wasm"]).current_dir(r));
     if ok {
-        let _ = std::fs::copy(r.join("target/wasm32-unknown-unknown/wasm/sim_wasm.wasm"), r.join("web/dist/sim.wasm"));
+        let target = std::env::var("CARGO_TARGET_DIR").map(PathBuf::from).unwrap_or_else(|_| r.join("target"));
+        let _ = std::fs::copy(target.join("wasm32-unknown-unknown/wasm/sim_wasm.wasm"), r.join("web/dist/sim.wasm"));
         println!("web/dist/sim.wasm");
     } else {
         eprintln!("wasm build failed (rustup target add wasm32-unknown-unknown); the page needs it only for the in-browser sim");
@@ -379,11 +404,13 @@ fn break_proof(r: &Path) -> i32 {
         }
         std::fs::write(&f, &orig).unwrap();
     };
-    // 1. Delta.seq renamed to head in notes 1.1 (a backend that never names the type still builds): the frozen
+    // 1. Delta.seq renamed to head in notes 1.2 (a backend that never names the type still builds): the frozen
     //    contract no longer matches, naming every dependent view, and the views no longer compile
-    let renamed = orig.replacen("pub struct Delta { pub seq: u64, pub rows: Vec<Note> }\n            pub struct Rep { pub op_id: String, pub row: serde_json::Value }\n            pub struct NoteAdded { pub id: String }\n        }\n        ops {\n            1 => List(()) -> Vec<Note>, needs \"notes:read\";\n            2 => Put(PutReq) -> Note, needs \"notes:write\", counted;\n            3 => Since(From) -> Delta, needs \"notes:read\";\n            9 => Purge(()) -> u32, needs \"notes:admin\";\n            10 => Replicate(Rep) -> bool, needs \"notes:replicate\";\n            11 => Dump(()) -> Vec<Rep>, needs \"notes:replicate\";\n        }\n        ui {\n            view \"notes.board\" place \"main\" {\n                needs [\"notes:read\", \"notes:write\"]; data [List, Put]; tries [Purge]; streams [Since];\n                props \"()\"; state \"Draft\"; slots [trend: \"trend.chart\" (\"TrendProps\")]; speaks [\"NoteAdded\"]; hears [];\n            }\n        }\n    }\n}\n\npub mod v2_0", "pub struct Delta { pub head: u64, pub rows: Vec<Note> }\n            pub struct Rep { pub op_id: String, pub row: serde_json::Value }\n            pub struct NoteAdded { pub id: String }\n        }\n        ops {\n            1 => List(()) -> Vec<Note>, needs \"notes:read\";\n            2 => Put(PutReq) -> Note, needs \"notes:write\", counted;\n            3 => Since(From) -> Delta, needs \"notes:read\";\n            9 => Purge(()) -> u32, needs \"notes:admin\";\n            10 => Replicate(Rep) -> bool, needs \"notes:replicate\";\n            11 => Dump(()) -> Vec<Rep>, needs \"notes:replicate\";\n        }\n        ui {\n            view \"notes.board\" place \"main\" {\n                needs [\"notes:read\", \"notes:write\"]; data [List, Put]; tries [Purge]; streams [Since];\n                props \"()\"; state \"Draft\"; slots [trend: \"trend.chart\" (\"TrendProps\")]; speaks [\"NoteAdded\"]; hears [];\n            }\n        }\n    }\n}\n\npub mod v2_0", 1);
+    let cut = orig.find("pub mod v1_2").expect("notes 1.2 block");
+    let end = orig.find("pub mod v2_1").expect("notes 2.1 block");
+    let renamed = format!("{}{}{}", &orig[..cut], orig[cut..end].replacen("pub struct Delta { pub seq: u64,", "pub struct Delta { pub head: u64,", 1), &orig[end..]);
     assert_ne!(renamed, orig);
-    run("Delta.seq renamed to head in notes 1.1", renamed, &[("cargo", &["run", "-q", "--release", "-p", "lf", "--", "check"], "."), ("npx", &["tsc", "--noEmit", "-p", "."], "web")]);
+    run("Delta.seq renamed to head in notes 1.2", renamed, &[("cargo", &["run", "-q", "--release", "-p", "lf", "--", "check"], "."), ("npx", &["tsc", "--noEmit", "-p", "."], "web")]);
     // 2. notes.board reads Purge as data although its needs do not hold notes:admin: the contract does not compile
     let wider = orig.replacen("data [List, Put]; tries [Purge];", "data [List, Put, Purge]; tries [];", 1);
     assert_ne!(wider, orig);

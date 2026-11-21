@@ -82,7 +82,7 @@ pub fn ts(d: &Value, all: &[Value]) -> String {
         for sl in slots {
             let props = sl["props"].as_str().unwrap();
             let _ = writeln!(s, "  {}(p: {props}): void;", sl["name"].as_str().unwrap());
-            let child = all.iter().find(|c| c["views"].as_array().unwrap().iter().any(|cv| cv["name"] == sl["view"]));
+            let child = all.iter().find(|c| c["views"].as_array().unwrap().iter().any(|cv| cv["render"] == sl["render"]));
             if let Some(c) = child {
                 if let Some(t) = parse_types(c["types"].as_str().unwrap_or("")).into_iter().find(|t| t.name() == props) {
                     if !types.iter().any(|x| x.name() == props) {

@@ -99,7 +99,7 @@ impl Net {
                 c.arg("--log").arg(d2.join(format!("inputs/{name}.jsonl")));
             }
             if name == "d" {
-                c.arg("--http").arg(format!("127.0.0.1:{door_port}")).arg("--static").arg(r2.join("web/dist"));
+                c.arg("--http").arg(format!("127.0.0.1:{door_port}")).arg("--shell").arg(r2.join("web/dist"));
             }
             if let Some((s, i)) = secrets.get(name) {
                 c.env("LF_NODE_SEED", s).env("LF_MODE", "live");
@@ -204,7 +204,31 @@ impl Net {
     }
 
     pub fn state(&self) -> Value {
-        json!({"up": *self.up.lock().unwrap(), "installed": *self.installed.lock().unwrap(), "mode": "local"})
+        json!({"up": *self.up.lock().unwrap(), "installed": *self.installed.lock().unwrap(), "mode": "local", "listeners": self.listeners()})
+    }
+
+    /// Proof step P13: every listening TCP socket of every node process (from `ss -ltnp`), with what it is: the
+    /// node's mesh port in the roster (signed frames from members only), or the one `http.serve` cell.
+    pub fn listeners(&self) -> Value {
+        let ss = std::process::Command::new("ss").args(["-ltnpH"]).output().ok().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
+        let kids = self.ctl.children.lock().unwrap();
+        let mesh_base = if self.door_port == LIVE_DOOR { LIVE_MESH } else { MESH };
+        let mut out = serde_json::Map::new();
+        for (i, n) in ["a", "b", "c", "d"].iter().enumerate() {
+            let Some(c) = kids.get(*n) else { continue };
+            let pid = c.id();
+            let ports: Vec<Value> = ss
+                .lines()
+                .filter(|l| l.contains(&format!("pid={pid},")))
+                .filter_map(|l| l.split_whitespace().nth(3).and_then(|a| a.rsplit(':').next()).and_then(|p| p.parse::<u16>().ok()))
+                .map(|p| {
+                    let what = if p == mesh_base + i as u16 { "mesh (roster port: signed member frames)" } else if p == self.door_port { "http.serve" } else { "other" };
+                    json!({"port": p, "what": what})
+                })
+                .collect();
+            out.insert(n.to_string(), json!({"pid": pid, "listeners": ports}));
+        }
+        Value::Object(out)
     }
 
     pub fn wait_page(&self) -> Result<(), String> {
@@ -229,10 +253,10 @@ pub fn serve_ctl(net: &Arc<Net>) {
         return;
     }
     std::thread::spawn(move || {
-        crate::http::serve(&format!("127.0.0.1:{CTL}"), move |req| {
-            let Some(me) = CURRENT.get().and_then(|s| s.lock().unwrap().clone()) else { return crate::http::Resp::status(503, "no net") };
+        http_serve_cell::server::serve(&format!("127.0.0.1:{CTL}"), move |req| {
+            let Some(me) = CURRENT.get().and_then(|s| s.lock().unwrap().clone()) else { return http_serve_cell::server::Resp::status(503, "no net") };
             if req.path == "/ctl/state" {
-                return crate::http::Resp::json(&me.state());
+                return http_serve_cell::server::Resp::json(&me.state());
             }
             if req.method == "POST" && req.path == "/ctl" {
                 let v: Value = serde_json::from_slice(&req.body).unwrap_or_default();
@@ -240,12 +264,12 @@ pub fn serve_ctl(net: &Arc<Net>) {
                     Some(a) => me.action(a),
                     None => me.step(&v["step"]),
                 };
-                return crate::http::Resp::json(&match r {
+                return http_serve_cell::server::Resp::json(&match r {
                     Ok(v) => json!({"ok": true, "result": v}),
                     Err(e) => json!({"ok": false, "error": e}),
                 });
             }
-            crate::http::Resp::status(404, "no")
+            http_serve_cell::server::Resp::status(404, "no")
         })
     });
 }

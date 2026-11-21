@@ -1,7 +1,7 @@
 {
   "api": "notes",
   "major": 1,
-  "minor": 1,
+  "minor": 2,
   "ops": [
     {
       "id": 1,
@@ -52,6 +52,30 @@
       "req": "()",
       "resp": "Vec<Rep>",
       "right": "notes:replicate"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/notes.board",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "notes:render:board"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/notes.board",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "notes:render:board"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/notes.board",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "notes:render:board"
     }
   ],
   "schema": "cd46c1db63f9b059",
@@ -70,11 +94,12 @@
       ],
       "place": "main",
       "props": "()",
+      "render": "notes:render:board",
       "slots": [
         {
           "name": "trend",
           "props": "TrendProps",
-          "view": "trend.chart"
+          "render": "trend:render:chart"
         }
       ],
       "speaks": [

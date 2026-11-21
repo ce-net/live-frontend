@@ -11,18 +11,19 @@ pub fn all() -> &'static Vec<Value> {
         vec![
             d::<notes_api::v1_0::Notes>(),
             d::<notes_api::v1_1::Notes>(),
-            d::<notes_api::v2_0::Notes>(),
+            d::<notes_api::v1_2::Notes>(),
+            d::<notes_api::v2_1::Notes>(),
             d::<status_api::Status>(),
             d::<trend_api::Trend>(),
             d::<faults_api::Faults>(),
             d::<ops_api::Ops>(),
             d::<systems_api::Systems>(),
-            d::<manifest::FeManifest>(),
-            d::<serve::FeServe>(),
+            d::<compose::PageCompose>(),
+            d::<shell::FeShell>(),
             d::<visitor::FeVisitor>(),
             d::<history::FeHistory>(),
             d::<explain::FeExplain>(),
-            d::<door::FeDoor>(),
+            d::<http::HttpServe>(),
         ]
     })
 }

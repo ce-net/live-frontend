@@ -1,7 +1,7 @@
 // systems.card: one live system. Each card is its own cell instance, announced by the node that serves it.
 import { cell } from '../../../../web/cell-rt';
 import { h } from '../../../../web/vendor/ui-cells/kit/dom';
-import { client } from '../gen/systems_catalog_1_0';
+import { client } from '../gen/systems_catalog_1_1';
 
 cell(async (cx) => {
   const all = await client(cx).List();

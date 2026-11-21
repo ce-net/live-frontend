@@ -2,7 +2,7 @@
 // which views it holds the needs of (and which it does not), and the last decisions the gates made on it.
 import { cell } from '../../../../web/cell-rt';
 import { clear, h } from '../../../../web/vendor/ui-cells/kit/dom';
-import { client, type MyChain } from '../gen/fe_explain_1_0';
+import { client, type MyChain } from '../gen/fe_explain_1_1';
 
 cell(async (cx) => {
   const api = client(cx);

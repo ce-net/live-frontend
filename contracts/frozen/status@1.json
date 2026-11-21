@@ -1,7 +1,7 @@
 {
   "api": "status",
   "major": 1,
-  "minor": 0,
+  "minor": 1,
   "ops": [
     {
       "id": 1,
@@ -18,6 +18,30 @@
       "req": "From",
       "resp": "Board",
       "right": "status:read"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/status.panel",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "status:render:panel"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/status.panel",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "status:render:panel"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/status.panel",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "status:render:panel"
     }
   ],
   "schema": "9dac1efed1d9c16f",
@@ -34,11 +58,12 @@
       ],
       "place": "main",
       "props": "()",
+      "render": "status:render:panel",
       "slots": [
         {
           "name": "trend",
           "props": "TrendProps",
-          "view": "trend.chart"
+          "render": "trend:render:chart"
         }
       ],
       "speaks": [],

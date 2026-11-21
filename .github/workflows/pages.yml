@@ -25,9 +25,12 @@ jobs:
       - run: npm ci --prefix web --no-audit --no-fund
       # every bundle, the page, the wasm node; the ops.panel bundle's bytes are left out (only its hash)
       - run: cargo cell build --pages
+      # the site is what the http.serve cell answers the anonymous chain, written to files (served.json says
+      # which render or compose step produced each one)
+      - run: cargo cell export web/site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web/dist
+          path: web/site
   deploy:
     needs: build
     runs-on: ubuntu-latest

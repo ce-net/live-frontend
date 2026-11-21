@@ -1,6 +1,6 @@
 [package]
 name = "fe-runtime"
-description = "The runtime cells of live-frontend (fe.manifest, fe.serve, fe.visitor, fe.explain, fe.history, fe.door): their contracts, their cores, and the Cell trait every backend core implements"
+description = "The runtime cells of live-frontend (page.compose, fe.shell, fe.visitor, fe.explain, fe.history, http.serve): their contracts, their cores, and the Cell trait every backend core implements"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

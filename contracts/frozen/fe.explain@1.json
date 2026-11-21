@@ -1,7 +1,7 @@
 {
   "api": "fe.explain",
   "major": 1,
-  "minor": 0,
+  "minor": 1,
   "ops": [
     {
       "id": 1,
@@ -10,6 +10,30 @@
       "req": "()",
       "resp": "MyChain",
       "right": "fe.explain:mine"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/cap.inspect",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "fe.explain:render:inspect"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/cap.inspect",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "fe.explain:render:inspect"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/cap.inspect",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "fe.explain:render:inspect"
     }
   ],
   "schema": "1ab12c768f6923d6",
@@ -26,6 +50,7 @@
       ],
       "place": "side",
       "props": "()",
+      "render": "fe.explain:render:inspect",
       "slots": [],
       "speaks": [],
       "state": "()",

@@ -1,7 +1,7 @@
 {
   "api": "trend",
   "major": 1,
-  "minor": 0,
+  "minor": 1,
   "ops": [
     {
       "id": 1,
@@ -18,6 +18,30 @@
       "req": "Sample",
       "resp": "()",
       "right": "trend:push"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/trend.chart",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "trend:render:chart"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/trend.chart",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "trend:render:chart"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/trend.chart",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "trend:render:chart"
     }
   ],
   "schema": "e4f51abec015e90a",
@@ -34,6 +58,7 @@
       ],
       "place": "slot",
       "props": "TrendProps",
+      "render": "trend:render:chart",
       "slots": [],
       "speaks": [],
       "state": "()",

@@ -3,7 +3,7 @@
 // version each node served at any step of the log.
 import { cell } from '../../../../web/cell-rt';
 import { clear, h } from '../../../../web/vendor/ui-cells/kit/dom';
-import { client, type Event } from '../gen/fe_history_1_0';
+import { client, type Event } from '../gen/fe_history_1_1';
 
 const NS = 'http://www.w3.org/2000/svg';
 const LANES = ['a', 'b', 'c', 'd', 'browser'];

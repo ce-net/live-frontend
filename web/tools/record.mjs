@@ -1,4 +1,4 @@
-// The recorded run (proof steps P1-P12): a headless browser opens the real page served by the real door of four
+// The recorded run (proof steps P1-P16): a headless browser opens the real page served by the real door of four
 // real node processes, and the controller of `cargo cell record` changes the nodes underneath it. Every step is
 // asserted here and written to --out; `cargo cell record` signs them into proof/run.jsonl.
 //   node tools/record.mjs --url http://127.0.0.1:21200/ --ctl http://127.0.0.1:21202 --browsers chromium --out obs.json --shots dir
@@ -80,13 +80,13 @@ async function run(name, type) {
   await page.evaluate(() => window.__lf.shell.join());
   await until(page, () => window.__lf.shell.events.filter((e) => e.kind === 'Mounted').length >= 8);
   s = await S(page);
-  const resolved = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'fe.manifest@1', 'Resolve', null)).body.entries.map((e) => e.body.view));
-  const opsSha = bundles['ops.panel@1.0'].sha;
-  const fetchOps = await page.evaluate((sha) => window.__lf.shell.call(null, 'a', 'fe.serve@1', 'Fetch', { sha256: sha }), opsSha);
+  const resolved = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'page.compose@1', 'Resolve', null)).body.entries.map((e) => e.body.view));
+  const opsSha = bundles['ops.panel@1.1'].sha;
+  const fetchOps = await page.evaluate((sha) => window.__lf.shell.call(null, 'a', 'ops@1', 'Render.Bundle', { sha256: sha }), opsSha);
   const order = s.events.filter((e) => e.kind === 'Mounted').map((e) => e.cell);
-  step(2, name, 'fe.manifest', 'Resolve', 'd', { chain: 'visitor' }, { mounted_in_order: order, resolved_views: [...new Set(resolved)], ops_fetch: { ok: fetchOps.ok, refused: fetchOps.refused, node: fetchOps.node } },
-    !resolved.includes('ops.panel') && !fetchOps.ok && /need: "ops:read"/.test(fetchOps.refused) && order.length >= 7,
-    `Joined: ${order.length} cells mounted in ${Date.now() - tj} ms; ops.panel absent from Resolve; Fetch of its bundle hash refused by node a`, Date.now() - tj);
+  step(2, name, 'page.compose', 'Resolve', 'd', { chain: 'visitor' }, { mounted_in_order: order, resolved_views: [...new Set(resolved)], ops_render_bundle: { ok: fetchOps.ok, refused: fetchOps.refused, node: fetchOps.node } },
+    !resolved.includes('ops.panel') && !fetchOps.ok && /need: "ops:render:panel"/.test(fetchOps.refused) && order.length >= 7,
+    `Joined: ${order.length} cells mounted in ${Date.now() - tj} ms; ops.panel absent from page.compose; ops Render.Bundle of its hash refused by node a's gate (ops:render:panel)`, Date.now() - tj);
   await page.screenshot({ path: `${shots}/${name}-p2-joined.png`, fullPage: true });
 
   // P3: a new cell starts on b while the page is open
@@ -109,9 +109,9 @@ async function run(name, type) {
   const swapped = await until(page, () => window.__lf.shell.stats.swaps.find((x) => x.view === 'notes.board' && x.to === '1.1'), 20000);
   s = await S(page);
   const refusedEv = s.events.find((e) => e.kind === 'Refused' && e.cell === 'notes.board' && e.detail.want);
-  step(6, name, 'fe.serve', 'Fetch', 'c', { holder: 'c', view: 'notes.board@1.1' }, refusedEv ? refusedEv.detail : null,
+  step(6, name, 'notes', 'Render.Bundle', 'c', { holder: 'c', view: 'notes.board@1.1' }, refusedEv ? refusedEv.detail : null,
     !!refusedEv && refusedEv.detail.holder === 'c' && refusedEv.detail.want !== refusedEv.detail.got,
-    'Node c served notes.board 1.1 with one changed byte: refused (want and got differ), reported to fe.manifest, loaded from another holder');
+    'Node c served notes.board 1.1 with one changed byte: refused (want and got differ), reported to page.compose, loaded from another holder');
   const nf2 = await cellFrame(page, 'notes.board', '1.1');
   const kept = nf2 ? await nf2.locator('input[type=text]').inputValue() : null;
   const others = Object.keys(before).filter((k) => !k.startsWith('notes.board'));
@@ -125,6 +125,23 @@ async function run(name, type) {
   summary.max_other_beat_gap_ms = swapped && swapped.maxOtherBeatGapMs;
   await ctl('untamper-c');
   await page.screenshot({ path: `${shots}/${name}-p4-swapped.png`, fullPage: true });
+
+  // P16: notes 1.2 (the release in which the view became ops of its cell) over 1.1: a minor swap like P4
+  const nf16 = await cellFrame(page, 'notes.board', '1.1');
+  const draft16 = 'draft before 1.2 ' + name;
+  if (nf16) await nf16.locator('input[type=text]').fill(draft16);
+  await sleep(2300);
+  const before16 = (await S(page)).boots;
+  await ctl('deploy-notes-1.2');
+  const sw16 = await until(page, () => window.__lf.shell.stats.swaps.find((x) => x.view === 'notes.board' && x.to === '1.2'), 20000);
+  const s16 = await S(page);
+  const nf16b = await cellFrame(page, 'notes.board', '1.2');
+  const kept16 = nf16b ? await nf16b.locator('input[type=text]').inputValue() : null;
+  const others16 = Object.keys(before16).filter((k) => !k.startsWith('notes.board'));
+  const untouched16 = others16.filter((k) => before16[k] === s16.boots[k]);
+  step(16, name, 'notes.board', 'swap', 'a,b,c', { from: '1.1', to: '1.2', draft: draft16 }, { swap: sw16, draft_after: kept16 },
+    !!sw16 && kept16 === draft16 && untouched16.length === others16.length,
+    `notes 1.2 (Render.Entry/Bundle/Html under notes:render:board) over 1.1: one panel booted again (${sw16 && sw16.ms} ms), draft kept, ${untouched16.length} of ${others16.length} other cells untouched`, sw16 ? sw16.ms : 0);
 
   // P7: the sandbox
   const pr = await page.evaluate(() => window.__lf.shell.probe('notes.board'));
@@ -145,7 +162,21 @@ async function run(name, type) {
   });
   step(10, name, 'trend.chart', 'slot', 'c', { parent: 'notes.board', slot: 'trend', wrong_props: { series: 5 } }, { child, wrong_props: bad },
     !!child && child.holders.includes('c') && /expected String/.test(bad || ''),
-    'notes.board opens its typed slot: trend.chart mounts in its own frame from node c; props {series: 5} are refused at the bus (and `cargo cell check` refuses a slot whose props type differs)');
+    'notes.board opens its typed slot (render "trend:render:chart"): trend.chart mounts in its own frame from node c; props {series: 5} are refused at the bus (and `cargo cell check` refuses a slot whose props type differs)');
+
+  // P15: a second cell offering trend:render:chart starts on a, the first stops on c: the slot is refilled from a
+  const parentBoot = await page.evaluate(() => { const m = [...window.__lf.shell.mounted.values()].find((x) => x.entry.body.view === 'notes.board'); return m ? window.__lf.shell.boots[m.key] : null; });
+  const t15 = Date.now();
+  await ctl('move-trend');
+  const moved = await until(page, () => {
+    const m = [...window.__lf.shell.mounted.values()].find((x) => x.entry.body.view === 'notes.board');
+    const c = m && m.children.get('trend');
+    return c && c.entry.holders.length && c.entry.holders.every((h) => h.node === 'a') ? { holders: c.entry.holders.map((h) => h.node), render: c.entry.body.render } : null;
+  }, 20000);
+  const parentBoot2 = await page.evaluate(() => { const m = [...window.__lf.shell.mounted.values()].find((x) => x.entry.body.view === 'notes.board'); return m ? window.__lf.shell.boots[m.key] : null; });
+  step(15, name, 'trend.chart', 'slot refill', 'c -> a', { action: 'move-trend' }, { child: moved, parent_boot_before: parentBoot, parent_boot_after: parentBoot2, ms: Date.now() - t15 },
+    !!moved && parentBoot !== null && parentBoot === parentBoot2,
+    `trend:render:chart now offered by a and no longer by c: the slot in notes.board is filled from a (${Date.now() - t15} ms); the parent's boot counter is unchanged`, Date.now() - t15);
 
   // P8: crash isolation: a thrown error restarts that one frame; a tight loop is measured (see the note)
   const ff = await cellFrame(page, 'faults.panel');
@@ -199,7 +230,7 @@ async function run(name, type) {
   await page.screenshot({ path: `${shots}/${name}-p9-failover.png`, fullPage: true });
 
   // P11: allowed, refused verbatim, uses exhausted
-  const nf3 = await cellFrame(page, 'notes.board', '1.1');
+  const nf3 = await cellFrame(page, 'notes.board', '1.2');
   await nf3.locator('input[type=text]').fill('allowed write ' + name);
   await nf3.locator('button', { hasText: 'Write' }).click();
   await sleep(800);
@@ -218,8 +249,27 @@ async function run(name, type) {
     /^Allowed/.test(allowed) && /^Refused\{need: "notes:admin"/.test(purge) && /uses exhausted \(40 of 40 spent\)/.test(exhausted),
     'notes.Put allowed in the visitor sandbox; notes.Purge refused with the gate text verbatim; writes refused once the 40 counted uses are spent');
 
-  // P5: notes 2.0 beside 1, on the same rows; 1 leaves at its until
-  await ctl('deploy-notes-2.0');
+  // P13 + P14: what listens, and what a visitor is composed
+  const st13 = await (await fetch(ctlUrl + '/ctl/state')).json();
+  const ls13 = st13.listeners || {};
+  const http13 = Object.entries(ls13).flatMap(([n, v]) => v.listeners.filter((l) => l.what === 'http.serve').map(() => n));
+  const others13 = Object.entries(ls13).flatMap(([n, v]) => v.listeners.filter((l) => l.what === 'other').map((l) => `${n}:${l.port}`));
+  const served13 = await page.evaluate(async () => (await fetch('_served')).json());
+  const got13 = await page.evaluate(() => [location.pathname.replace(/^\//, '') || 'index.html', ...performance.getEntriesByType('resource').map((r) => new URL(r.name).pathname.replace(/^\//, ''))].filter((p) => p !== '_served' && p !== 'door' && p !== 'door.json'));
+  const unmapped13 = [...new Set(got13)].filter((p) => !served13.some((x) => x.path === p || (p === '' && x.path === 'index.html')));
+  step(13, name, 'http.serve', 'listeners', 'a,b,c,d', { ss: '-ltnp per node process' }, { listeners: ls13, http_serve_on: http13, other: others13, served: served13.length, unmapped: unmapped13 },
+    http13.length === 1 && http13[0] === 'd' && others13.length === 0 && unmapped13.length === 0 && served13.length > 0,
+    `One HTTP listener on the mesh, owned by the http.serve cell on d; every other socket is a node's mesh port from the roster; ${served13.length} paths the browser received each map to a render or compose step (cell, node, sha256)`);
+  const hist13 = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'fe.history@1', 'Since', { seq: 0 })).body.events);
+  const myChain13 = await page.evaluate(() => window.__lf.shell.chainId);
+  const opsAllowed13 = hist13.filter((e) => e.kind === 'Allowed' && e.detail && e.detail.need === 'ops:render:panel' && e.detail.chain === myChain13);
+  const tree13 = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'page.compose@1', 'Resolve', null)).body.entries.map((e) => e.body.render));
+  step(14, name, 'page.compose', 'Resolve', 'd', { chain: 'visitor' }, { renders: tree13, ops_allowed: opsAllowed13.length },
+    !tree13.includes('ops:render:panel') && opsAllowed13.length === 0,
+    'The visitor tree holds no ops entry and the gate log no allowed ops:render:panel call from this chain (the in-process test p14 shows the tree is byte-identical to one composed on a mesh that never ran ops)');
+
+  // P5: notes 2.1 beside 1, on the same rows; 1 leaves at its until
+  await ctl('deploy-notes-2.1');
   const both = await until(page, () => window.__lf.shell.mounted.has('notes.board|main|notes@1') && window.__lf.shell.mounted.has('notes.board|main|notes@2'), 15000);
   await page.screenshot({ path: `${shots}/${name}-p5-two-majors.png`, fullPage: true });
   const rows = await page.evaluate(async () => {
@@ -229,7 +279,7 @@ async function run(name, type) {
     return { v1: r1.ok && r1.body.length, v2: r2.ok && r2.body.length, v1_first: r1.ok && r1.body[0], v2_first: r2.ok && r2.body[0] };
   });
   const gone1 = await until(page, () => !window.__lf.shell.mounted.has('notes.board|main|notes@1') && window.__lf.shell.mounted.has('notes.board|main|notes@2'), 30000);
-  step(5, name, 'notes.board', 'negotiate', 'a,b,c', { deploy: 'notes@2.0 beside notes@1.1 (until +20 s)' }, { both_mounted: !!both, rows, one_left: !!gone1 },
+  step(5, name, 'notes.board', 'negotiate', 'a,b,c', { deploy: 'notes@2.1 beside notes@1.2 (until +20 s)' }, { both_mounted: !!both, rows, one_left: !!gone1 },
     !!both && rows.v1 === rows.v2 && !!gone1, 'notes@2 served beside notes@1: two panels on the same rows (colour by name in 1, as RGB in 2); 1 left by itself at its until');
 
   // P12: revoke: the next call is refused and every panel leaves
@@ -260,11 +310,11 @@ async function runLive(name, type) {
   const mine = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'fe.explain@1', 'Mine', null)).body);
   step(2, name, 'fe.visitor', 'Join', 'd', { holder: w.holder.slice(0, 16) + '...', pow: 'sha256 with 3 leading hex zeros' }, { mode: w.mode, nodes: w.nodes, chain: w.chain, links: mine.links, uses: mine.uses },
     w.mode === 'live' && mine.links.length === 2 && mine.uses === 40, `Joined the live nodes in ${Date.now() - t} ms: chain ${w.chain}, root -> issuer -> this browser's WebCrypto key, 40 counted uses, 15 minutes`, Date.now() - t);
-  const resolved = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'fe.manifest@1', 'Resolve', null)).body.entries.map((e) => e.body.view));
-  const opsSha = bundles['ops.panel@1.0'].sha;
-  const fetchOps = await page.evaluate((sha) => window.__lf.shell.call(null, 'a', 'fe.serve@1', 'Fetch', { sha256: sha }), opsSha);
-  step(2, name, 'fe.serve', 'Fetch', 'a', { sha256: opsSha }, { resolved: [...new Set(resolved)], ops_fetch: fetchOps.refused },
-    !resolved.includes('ops.panel') && /need: "ops:read"/.test(fetchOps.refused || ''), 'ops.panel is not in this chain\'s manifest, and the gate refuses its bundle');
+  const resolved = await page.evaluate(async () => (await window.__lf.shell.call(null, 'd', 'page.compose@1', 'Resolve', null)).body.entries.map((e) => e.body.view));
+  const opsSha = bundles['ops.panel@1.1'].sha;
+  const fetchOps = await page.evaluate((sha) => window.__lf.shell.call(null, 'a', 'ops@1', 'Render.Bundle', { sha256: sha }), opsSha);
+  step(2, name, 'ops', 'Render.Bundle', 'a', { sha256: opsSha }, { resolved: [...new Set(resolved)], ops_fetch: fetchOps.refused },
+    !resolved.includes('ops.panel') && /need: "ops:render:panel"/.test(fetchOps.refused || ''), 'ops.panel is not in this chain\'s tree, and the gate refuses its Render.Bundle');
   await page.screenshot({ path: `${shots}/${name}-live-joined.png`, fullPage: true });
   const nf = await cellFrame(page, 'notes.board');
   await nf.locator('input[type=text]').fill('a note on the live nodes');

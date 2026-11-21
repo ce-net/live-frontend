@@ -1,7 +1,7 @@
 {
   "api": "faults",
   "major": 1,
-  "minor": 0,
+  "minor": 1,
   "ops": [
     {
       "id": 1,
@@ -10,6 +10,30 @@
       "req": "ArmReq",
       "resp": "Armed",
       "right": "faults:run"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/faults.panel",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "faults:render:panel"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/faults.panel",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "faults:render:panel"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/faults.panel",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "faults:render:panel"
     }
   ],
   "schema": "f38442ded9fb9130",
@@ -26,6 +50,7 @@
       ],
       "place": "main",
       "props": "()",
+      "render": "faults:render:panel",
       "slots": [],
       "speaks": [],
       "state": "()",

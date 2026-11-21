@@ -9,12 +9,24 @@ use fe_gate::Ticket;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
-/// Exactly the rights of a visitor chain. `ops:read`, `notes:admin`, every `:announce` and every admin right are
-/// not here, and not in the issuer's grant either, so the issuer cannot mint them.
+/// Exactly the rights of a visitor chain. `ops:render:panel`, `ops:read`, `notes:admin`, every `:announce` and
+/// every admin right are not here, and not in the issuer's grant either, so the issuer cannot mint them. A view is
+/// seen only through its render right; `cargo cell check` fails if a render right here lacks its view's data rights.
 pub const VISITOR_RIGHTS: &[&str] = &[
-    "fe.manifest:resolve", "fe.manifest:report", "fe.serve:fetch", "fe.history:read", "fe.history:observe",
-    "fe.explain:mine", "fe.visitor:revoke-own", "fe.visitor:state",
-    "systems.catalog:read", "notes:read", "notes:write", "status:read", "trend:read", "faults:run",
+    "page.compose:resolve", "page.compose:report", "fe.shell:render:page",
+    "fe.history:render:timeline", "fe.history:read", "fe.history:observe",
+    "fe.explain:render:inspect", "fe.explain:mine", "fe.visitor:revoke-own", "fe.visitor:state",
+    "systems.catalog:render:card", "systems.catalog:read",
+    "notes:render:board", "notes:read", "notes:write",
+    "status:render:panel", "status:read", "trend:render:chart", "trend:read",
+    "faults:render:panel", "faults:run",
+];
+
+/// The anonymous chain's table (no join, no key): what `http.serve` uses for `GET /` and what a static export
+/// shows. Read-only render and compose rights; no data op that writes, and nothing counted.
+pub const ANONYMOUS_RIGHTS: &[&str] = &[
+    "page.compose:resolve", "fe.shell:render:page", "systems.catalog:render:card", "systems.catalog:read",
+    "status:render:panel", "status:read", "trend:render:chart", "trend:read", "fe.history:render:timeline", "fe.history:read",
 ];
 
 pub struct Policy {
@@ -85,6 +97,39 @@ impl Visitor {
         self.chains.insert(id.clone(), St { holder: j.holder.clone(), spent: 0, count: self.policy.count, until, revoked: false });
         cx.event("Joined", "fe.visitor", json!({"chain": id, "visitor": fp, "until": until, "uses": self.policy.count}));
         Ok(Joined { chain, id, until, uses: self.policy.count })
+    }
+
+    /// The anonymous chain: what `http.serve` composes `/` with, for a reader that has not joined. Read-only render
+    /// and compose rights (`ANONYMOUS_RIGHTS`), no count (nothing it holds is counted), the same proof of work, the
+    /// same mint limit, 15 minutes.
+    pub fn anon(&mut self, j: JoinReq, cx: &mut Cx) -> Result<Joined, String> {
+        if hex_key(&j.holder).is_none() {
+            return Err("holder is not an Ed25519 public key".into());
+        }
+        if !pow_ok(&j.holder, &j.pow, self.policy.pow_zeros) {
+            return Err("proof of work does not check".into());
+        }
+        let day = cx.now / 86_400_000;
+        if self.day.0 != day {
+            self.day = (day, 0);
+        }
+        let mint = self.grant.caveats.mint.unwrap_or(self.policy.mint_per_day).min(self.policy.mint_per_day);
+        if self.day.1 >= mint {
+            return Err(format!("mint limit: {mint} chains today"));
+        }
+        self.day.1 += 1;
+        let until = (cx.now + self.policy.ttl_ms).min(self.grant.caveats.until - 1);
+        let link = self.issuer.grant(
+            &j.holder,
+            ANONYMOUS_RIGHTS.iter().map(|s| s.to_string()).collect(),
+            // one chain serves every anonymous reader of one http.serve cell, through its cache: a higher rate
+            Caveats { until, count: None, rate: Some(self.policy.rate * 10), rows: None, mint: None },
+        );
+        let chain = Chain(vec![self.grant.clone(), link]);
+        let id = chain.id();
+        self.chains.insert(id.clone(), St { holder: j.holder.clone(), spent: 0, count: 0, until, revoked: false });
+        cx.event("Joined", "fe.visitor", json!({"chain": id, "visitor": fingerprint(&j.holder), "until": until, "anonymous": true}));
+        Ok(Joined { chain, id, until, uses: 0 })
     }
 
     /// One use of a counted chain: a ticket bound to this call, or why not.

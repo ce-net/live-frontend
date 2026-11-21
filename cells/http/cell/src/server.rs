@@ -1,4 +1,5 @@
-//! A small HTTP/1.1 server (keep-alive, one thread per connection), enough for a page, a JSON door and a ctl.
+//! The listener: a small HTTP/1.1 server (keep-alive, one thread per connection). This file is the only place in
+//! the repository that opens a listening socket (`cargo cell check` fails on any other).
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
@@ -13,14 +14,16 @@ pub struct Resp {
     pub status: u16,
     pub ctype: String,
     pub body: Vec<u8>,
+    /// `true` for bytes named by their sha256 (`/_c/<sha256>`): `Cache-Control: immutable`.
+    pub immutable: bool,
 }
 
 impl Resp {
     pub fn json(v: &serde_json::Value) -> Resp {
-        Resp { status: 200, ctype: "application/json".into(), body: v.to_string().into_bytes() }
+        Resp { status: 200, ctype: "application/json".into(), body: v.to_string().into_bytes(), immutable: false }
     }
     pub fn status(s: u16, msg: &str) -> Resp {
-        Resp { status: s, ctype: "text/plain".into(), body: msg.as_bytes().to_vec() }
+        Resp { status: s, ctype: "text/plain; charset=utf-8".into(), body: msg.as_bytes().to_vec(), immutable: false }
     }
 }
 
@@ -72,12 +75,13 @@ fn conn<H: Fn(Req) -> Resp>(c: TcpStream, h: &H) -> std::io::Result<()> {
         let reason = match resp.status {
             200 => "OK",
             204 => "No Content",
+            403 => "Forbidden",
             404 => "Not Found",
             _ => "Error",
         };
         let head = format!(
-            "HTTP/1.1 {} {reason}\r\nContent-Type: {}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: content-type\r\nCache-Control: no-store\r\n\r\n",
-            resp.status, resp.ctype, resp.body.len()
+            "HTTP/1.1 {} {reason}\r\nContent-Type: {}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: content-type\r\nCache-Control: {}\r\n\r\n",
+            resp.status, resp.ctype, resp.body.len(), if resp.immutable { "public, max-age=31536000, immutable" } else { "no-store" }
         );
         w.write_all(head.as_bytes())?;
         w.write_all(&resp.body)?;
@@ -98,17 +102,5 @@ pub fn ctype(path: &str) -> &'static str {
         "png" => "image/png",
         "svg" => "image/svg+xml",
         _ => "application/octet-stream",
-    }
-}
-
-pub fn file(root: &std::path::Path, path: &str) -> Resp {
-    let p = path.split('?').next().unwrap_or("/");
-    let p = if p.ends_with('/') { format!("{p}index.html") } else { p.to_string() };
-    if p.contains("..") {
-        return Resp::status(404, "no");
-    }
-    match std::fs::read(root.join(p.trim_start_matches('/'))) {
-        Ok(b) => Resp { status: 200, ctype: ctype(&p).into(), body: b },
-        Err(_) => Resp::status(404, "not found"),
     }
 }

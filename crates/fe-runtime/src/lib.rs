@@ -3,7 +3,7 @@
 //! native processes and as wasm in the browser, and a recorded input log replays to the same bytes.
 pub mod api;
 pub mod history;
-pub mod manifest;
+pub mod compose;
 pub mod visitor;
 
 use fe_chain::Effective;
@@ -57,7 +57,7 @@ pub struct Cx<'a> {
     /// The other nodes that hold this cell (from its install), and every node of the mesh.
     pub peers: &'a [String],
     pub nodes: &'a [String],
-    /// The node that hosts the runtime cells (fe.manifest, fe.history, fe.visitor).
+    /// The node that hosts the runtime cells (page.compose, fe.history, fe.visitor).
     pub door: &'a str,
     pub out: &'a mut Vec<Out>,
 }
@@ -80,6 +80,10 @@ pub trait Cell: Send {
     /// Installs or upgrades the version this node serves (`1.0`, `1.1`, `2.0`).
     fn serve(&mut self, major: u32, minor: u32);
     fn handle(&mut self, major: u32, op: &str, body: Value, cx: &mut Cx) -> Result<Value, String>;
+    /// The inner HTML of `Render.Html` for one view (escaped text only; no script). `None`: the generic panel.
+    fn html(&self, _view: &str, _instance: &str, _props: &Value) -> Option<String> {
+        None
+    }
     fn tick(&mut self, _cx: &mut Cx) {}
     fn reply(&mut self, _tag: &str, _ok: bool, _body: Value, _cx: &mut Cx) {}
     /// A node's beat (every node sends one each second to every node).

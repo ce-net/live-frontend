@@ -1,6 +1,8 @@
-//! fe.manifest: signed entries with a five-second lease, answered per viewer. A cell that stops renewing leaves
-//! the page by itself; a viewer is never sent an entry whose `needs` its chain does not hold.
-use crate::api::manifest::*;
+//! page.compose: the aggregator of render capabilities. Each serving cell announces the signed answer of its own
+//! `Render.Entry` with a five-second lease; a cell that stops renewing leaves the page by itself. `Resolve`
+//! answers a chain only the entries whose `<api>:render:<view>` it holds, so a view the viewer may not render
+//! leaves no trace in the answer: the tree is the same as on a mesh that never ran that cell.
+use crate::api::compose::*;
 use crate::{parse, to, Caller, Cell, Cx};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -18,7 +20,7 @@ pub fn entry_bytes(b: &EntryBody) -> Vec<u8> {
 type Key = (String, String, String); // view, instance, api
 
 #[derive(Default)]
-pub struct Manifest {
+pub struct Compose {
     /// node name -> public key (hex), from the roster.
     pub keys: BTreeMap<String, String>,
     pub held: BTreeMap<Key, BTreeMap<String, (Signed, u64)>>,
@@ -30,9 +32,9 @@ fn version_key(v: &str) -> (u32, u32) {
     (p.next().unwrap_or(0), p.next().unwrap_or(0))
 }
 
-impl Manifest {
-    pub fn new(keys: BTreeMap<String, String>) -> Manifest {
-        Manifest { keys, ..Default::default() }
+impl Compose {
+    pub fn new(keys: BTreeMap<String, String>) -> Compose {
+        Compose { keys, ..Default::default() }
     }
 
     /// Every live entry: per (view, instance, api) the newest version, with the holders that announce it.
@@ -54,6 +56,11 @@ impl Manifest {
         out
     }
 
+    /// The entries a chain with `rights` may render, newest version per (view, instance, api).
+    pub fn tree(&self, rights: &[String], now: u64) -> Vec<Entry> {
+        self.live(now).into_iter().filter(|e| fe_chain::holds(rights, &e.body.render)).collect()
+    }
+
     fn expire(&mut self, cx: &mut Cx) {
         let now = cx.now;
         let mut gone = vec![];
@@ -72,9 +79,9 @@ impl Manifest {
     }
 }
 
-impl Cell for Manifest {
+impl Cell for Compose {
     fn name(&self) -> &'static str {
-        "fe.manifest"
+        "page.compose"
     }
     fn serve(&mut self, _: u32, _: u32) {}
     fn tick(&mut self, cx: &mut Cx) {
@@ -113,8 +120,7 @@ impl Cell for Manifest {
             }
             "Resolve" => {
                 let rights = cx.caller.rights();
-                let entries = self.live(cx.now).into_iter().filter(|e| e.body.needs.iter().all(|n| fe_chain::holds(&rights, n))).collect();
-                Ok(to(&Resolved { seq: self.seq, entries }))
+                Ok(to(&Tree { seq: self.seq, entries: self.tree(&rights, cx.now) }))
             }
             "All" => Ok(to(&self.live(cx.now))),
             "Report" => {
@@ -122,7 +128,7 @@ impl Cell for Manifest {
                 cx.event("Refused", &r.view, json!({"holder": r.holder, "bundle": r.bundle, "why": r.why, "reported_by": cx.caller.chain()}));
                 Ok(Value::Null)
             }
-            _ => Err(format!("fe.manifest has no op {op}")),
+            _ => Err(format!("page.compose has no op {op}")),
         }
     }
 }

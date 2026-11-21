@@ -1,21 +1,17 @@
 {
   "browsers": [
-    "chromium"
+    "firefox"
   ],
   "cells_untouched_during_swap": "8 of 8",
-  "failover_ms": 490,
-  "hot_swap_ms": 73,
-  "max_other_beat_gap_ms": 0,
-  "page_errors_chromium": 1,
-  "recorded": "2026-11-16T02:06:57.938Z",
-  "steps": "12 of 12 pass",
-  "tight_loop_chromium": {
-    "frames_paused": {
-      "frames": 8,
-      "ms": 4564,
-      "of": 10
-    },
-    "shell_stall_ms": 3
+  "failover_ms": 144,
+  "hot_swap_ms": 218,
+  "max_other_beat_gap_ms": 577,
+  "page_errors_firefox": 1,
+  "recorded": "2026-11-21T05:14:49.599Z",
+  "steps": "16 of 16 pass",
+  "tight_loop_firefox": {
+    "frames_paused": null,
+    "shell_stall_ms": 3960
   },
-  "verify": "run.jsonl: 12 signed steps, chain intact, all signed by the recorder ed25519:512216d8d875\nnode a: 479 of 479 logged inputs re-executed to the same output bytes\nnode b: 491 of 491 logged inputs re-executed to the same output bytes\nnode c: 559 of 559 logged inputs re-executed to the same output bytes\nnode d: 1237 of 1237 logged inputs re-executed to the same output bytes"
+  "verify": "run.jsonl: 16 signed steps, chain intact, all signed by the recorder ed25519:d915d8361298\nnode a: 699 of 699 logged inputs re-executed to the same output bytes\nnode b: 672 of 672 logged inputs re-executed to the same output bytes\nnode c: 677 of 677 logged inputs re-executed to the same output bytes\nnode d: 1655 of 1655 logged inputs re-executed to the same output bytes"
 }

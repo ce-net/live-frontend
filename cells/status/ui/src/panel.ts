@@ -2,7 +2,7 @@
 // the next answer comes from another one, with no reload.
 import { cell } from '../../../../web/cell-rt';
 import { clear, h } from '../../../../web/vendor/ui-cells/kit/dom';
-import { client, slots, type Board } from '../gen/status_1_0';
+import { client, slots, type Board } from '../gen/status_1_1';
 
 cell(async (cx) => {
   const api = client(cx);

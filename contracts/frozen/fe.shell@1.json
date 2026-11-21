@@ -1,0 +1,49 @@
+{
+  "api": "fe.shell",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/shell.page",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "fe.shell:render:page"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/shell.page",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "fe.shell:render:page"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/shell.page",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "fe.shell:render:page"
+    }
+  ],
+  "schema": "d966a33a13948108",
+  "types": "",
+  "views": [
+    {
+      "data": [],
+      "hears": [],
+      "name": "shell.page",
+      "needs": [],
+      "place": "page",
+      "props": "()",
+      "render": "fe.shell:render:page",
+      "slots": [],
+      "speaks": [],
+      "state": "()",
+      "streams": [],
+      "tries": []
+    }
+  ]
+}

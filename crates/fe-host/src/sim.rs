@@ -112,7 +112,7 @@ impl LocalMesh {
 
     /// A browser frame to the door, forwarded to its node when the door says so.
     pub fn door(&mut self, op: &str, body: Value) -> Reply {
-        let o = self.feed("d", Input::Frame { from: "browser".into(), api: "fe.door@1".into(), op: op.into(), body, now: self.now }).unwrap();
+        let o = self.feed("d", Input::Frame { from: "browser".into(), api: "http.serve@1".into(), op: op.into(), body, now: self.now }).unwrap();
         let r = o.reply.clone().unwrap();
         let f = o.forward.clone();
         self.run("d", o);

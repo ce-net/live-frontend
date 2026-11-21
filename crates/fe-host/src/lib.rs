@@ -8,12 +8,12 @@ pub mod sim;
 use base64::Engine;
 use fe_chain::{fingerprint, holds, Identity, Link};
 use fe_gate::{Gate, Refused, VisitorCall};
-use fe_runtime::api::door::{NodeInfo, Routed, Welcome};
+use fe_runtime::api::compose::{EntryBody, Signed, SlotDecl};
 use fe_runtime::api::explain::{LinkView, MyChain, ViewVerdict};
-use fe_runtime::api::manifest::{EntryBody, Signed, SlotDecl};
-use fe_runtime::api::serve::{Bundle, ByHash};
+use fe_runtime::api::http::{NodeInfo, Routed, Welcome};
+use fe_runtime::api::render::{Bundle, ByHash, Html, HtmlReq, ViewReq};
+use fe_runtime::compose::{entry_bytes, Compose};
 use fe_runtime::history::History;
-use fe_runtime::manifest::{entry_bytes, Manifest};
 use fe_runtime::visitor::{Policy, Visitor};
 use fe_runtime::{parse, to, Caller, Cell, Cx, Out};
 use serde::{Deserialize, Serialize};
@@ -49,7 +49,7 @@ fn default_mode() -> String {
 }
 
 /// Rights a node (not a visitor) may use on another node's cells.
-pub const NODE_RIGHTS: &[&str] = &["notes:replicate", "trend:push", "fe.history:append", "fe.manifest:announce", "fe.manifest:all"];
+pub const NODE_RIGHTS: &[&str] = &["notes:replicate", "trend:push", "fe.history:append", "page.compose:announce", "page.compose:all"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Reply {
@@ -97,6 +97,8 @@ struct Install {
     body: EntryBody,
     peers: Vec<String>,
     bytes: Option<Vec<u8>>,
+    /// Other files of the view by sha256 (only the shell has them: styles, worker, wasm node, recorded run).
+    parts: BTreeMap<String, Option<Vec<u8>>>,
 }
 
 pub struct Host {
@@ -109,7 +111,7 @@ pub struct Host {
     pub calls: u64,
     last_beat: u64,
     last_announce: u64,
-    manifest: Option<Manifest>,
+    pub compose: Option<Compose>,
     history: Option<History>,
     visitor: Option<Visitor>,
     nodes: Vec<String>,
@@ -133,11 +135,11 @@ impl Host {
         let nodes = cfg.nodes.iter().map(|m| m.name.clone()).collect();
         let mut h = Host {
             id, gate, cells: BTreeMap::new(), installs: BTreeMap::new(), tampered: BTreeSet::new(), calls: 0,
-            last_beat: 0, last_announce: 0, manifest: None, history: None, visitor: None, nodes, cfg,
+            last_beat: 0, last_announce: 0, compose: None, history: None, visitor: None, nodes, cfg,
         };
         if h.cfg.name == h.cfg.door {
             let keys = h.cfg.nodes.iter().map(|m| (m.name.clone(), m.key.clone())).collect();
-            h.manifest = Some(Manifest::new(keys));
+            h.compose = Some(Compose::new(keys));
             h.history = Some(History::default());
             if let Some((seed, grant)) = h.cfg.issuer.clone() {
                 let issuer = Identity::from_seed_hex(&seed).ok_or("bad issuer seed")?;
@@ -223,7 +225,7 @@ impl Host {
         let door = self.cfg.door.clone();
         let mut cx = Cx { now, node: &node, caller, peers: &peers, nodes: &nodes, door: &door, out };
         match name.as_str() {
-            "fe.manifest" => self.manifest.as_mut().ok_or("fe.manifest is not on this node")?.handle(major, op, body, &mut cx),
+            "page.compose" => self.compose.as_mut().ok_or("page.compose is not on this node")?.handle(major, op, body, &mut cx),
             "fe.history" => self.history.as_mut().ok_or("fe.history is not on this node")?.handle(major, op, body, &mut cx),
             "fe.visitor" => self.visitor.as_mut().ok_or("fe.visitor is not on this node")?.handle(major, op, body, &mut cx),
             _ => {
@@ -243,7 +245,7 @@ impl Host {
         if api == "sim.ctl" {
             return (self.ctl(op, body, now, out), None);
         }
-        if api == "fe.door@1" {
+        if api == "http.serve@1" {
             return self.door(op, body, now, out);
         }
         if api == "fe.gate@1" && op == "Revoke" {
@@ -288,6 +290,9 @@ impl Host {
     fn visitor_call(&mut self, vc: VisitorCall, now: u64, out: &mut Vec<Out>) -> Reply {
         let (name, major) = split_api(&vc.call.api);
         let op = vc.call.op.clone();
+        if op.starts_with("Render.") {
+            return self.render(&name, major, &vc, now, out);
+        }
         let Some(need) = registry::right(&name, major, &op) else {
             return Reply::gate(Refused { need: "?".into(), chain: vc.chain.id(), node: self.gate.node.clone(), why: format!("{} has no op {op}", vc.call.api) });
         };
@@ -306,7 +311,6 @@ impl Host {
         };
         let caller = Caller::Visitor(eff.clone());
         let r = match name.as_str() {
-            "fe.serve" => self.fetch(body, &eff, &vc),
             "fe.explain" => self.explain(&vc, &eff, now),
             _ => match self.dispatch(&vc.call.api, &op, body, &caller, now, out) {
                 Ok(v) => Reply::ok(v),
@@ -320,42 +324,94 @@ impl Host {
         r
     }
 
-    fn fetch(&mut self, body: Value, eff: &fe_chain::Effective, vc: &VisitorCall) -> Reply {
-        let f: ByHash = match parse(body) {
-            Ok(f) => f,
-            Err(e) => return Reply::no(e),
+    /// The installs of `api_name` that answer for `view` (any instance when `instance` is None).
+    fn installs_of(&self, api_name: &str, major: u32, view: &str, instance: Option<&str>) -> Vec<&Install> {
+        let api = format!("{api_name}@{major}");
+        self.installs.values().filter(|i| i.body.api == api && i.body.view == view && instance.is_none_or(|x| x == i.body.instance)).collect()
+    }
+
+    /// `Render.Entry`, `Render.Bundle`, `Render.Html`: the view as ops of its own backend cell, under the one right
+    /// `<api>:render:<view>`. A view a chain may not render is refused here by the ordinary gate, with the same
+    /// refusal text as any other op; there is no separate fetch rule.
+    fn render(&mut self, name: &str, major: u32, vc: &VisitorCall, now: u64, out: &mut Vec<Out>) -> Reply {
+        let op = vc.call.op.as_str();
+        let body: Value = serde_json::from_str(&vc.call.body).unwrap_or(Value::Null);
+        // the right this call needs, from the install it names (a view, or a bundle by hash)
+        let target: Option<(EntryBody, Option<Vec<u8>>)> = match op {
+            "Render.Entry" | "Render.Html" => {
+                let v: Option<ViewReq> = serde_json::from_value(body.clone()).ok();
+                v.and_then(|v| self.installs_of(name, major, &v.view, v.instance.as_deref()).into_iter().max_by_key(|i| i.body.version.clone()).map(|i| (i.body.clone(), None)))
+            }
+            "Render.Bundle" => {
+                let h: Option<ByHash> = serde_json::from_value(body.clone()).ok();
+                let api = format!("{name}@{major}");
+                h.and_then(|h| {
+                    self.installs.values().filter(|i| i.body.api == api).find_map(|i| {
+                        if i.body.bundle == h.sha256 {
+                            return Some((i.body.clone(), i.bytes.clone()));
+                        }
+                        i.parts.get(&h.sha256).map(|b| (i.body.clone(), b.clone()))
+                    })
+                })
+            }
+            _ => None,
         };
-        let mut need_missing = None;
-        for i in self.installs.values() {
-            if i.body.bundle != f.sha256 {
-                continue;
+        let need = match &target {
+            Some((b, _)) => b.render.clone(),
+            None => format!("{name}:render:?"),
+        };
+        let eff = match self.gate.check(vc, &need, false, now) {
+            Ok(e) => e,
+            Err(r) => {
+                self.event("Refused", &vc.call.api, json!({"op": op, "need": r.need, "why": r.why, "chain": r.chain, "gate": r.node}), now, out);
+                return Reply::gate(r);
             }
-            if let Some(n) = i.body.needs.iter().find(|n| !holds(&eff.rights, n)) {
-                need_missing = Some(n.clone());
-                continue;
+        };
+        let _ = eff;
+        let Some((entry, bytes)) = target else {
+            let why = match op {
+                "Render.Bundle" => "no bundle with that hash here",
+                "Render.Entry" | "Render.Html" => "no such view served here",
+                _ => "not a render op",
+            };
+            return Reply::gate(Refused { need, chain: vc.chain.id(), node: self.gate.node.clone(), why: why.into() });
+        };
+        self.calls += 1;
+        match op {
+            "Render.Entry" => Reply::ok(to(&Signed { body: entry.clone(), node: self.cfg.name.clone(), sig: self.id.sign(&entry_bytes(&entry)) })),
+            "Render.Bundle" => {
+                // installed by hash only (the shell's files): the gate has decided; the node attaches the bytes from
+                // its content store, by this hash, outside the host (so the input log stays small and replayable)
+                let Some(mut b) = bytes else {
+                    let sha = serde_json::from_value::<ByHash>(body).map(|h| h.sha256).unwrap_or_default();
+                    return Reply::ok(json!({"sha256": sha, "b64": "", "store": true}));
+                };
+                let main = entry.bundle == serde_json::from_value::<ByHash>(body).map(|h| h.sha256).unwrap_or_default();
+                if main && self.tampered.contains(&entry.view) && !b.is_empty() {
+                    let k = b.len() / 2;
+                    b[k] ^= 0x01;
+                }
+                let sha = fe_chain::sha256_hex(&b);
+                let sha = if main && self.tampered.contains(&entry.view) { entry.bundle.clone() } else { sha };
+                Reply::ok(to(&Bundle { sha256: sha, b64: base64::engine::general_purpose::STANDARD.encode(&b) }))
             }
-            let Some(bytes) = &i.bytes else { return Reply::no("the bundle's bytes are not on this host") };
-            let mut b = bytes.clone();
-            if self.tampered.contains(&i.body.view) && !b.is_empty() {
-                let k = b.len() / 2;
-                b[k] ^= 0x01;
+            "Render.Html" => {
+                let req: HtmlReq = serde_json::from_value(body).unwrap_or(HtmlReq { view: entry.view.clone(), instance: None, props: Value::Null });
+                let inner = self.cells.get(name).and_then(|c| c.html(&entry.view, &entry.instance, &req.props));
+                let html = html_fragment(&entry, inner.as_deref());
+                Reply::ok(to(&Html { view: entry.view.clone(), sha256: fe_chain::sha256_hex(html.as_bytes()), html }))
             }
-            return Reply::ok(to(&Bundle { sha256: f.sha256, b64: base64::engine::general_purpose::STANDARD.encode(&b) }));
+            _ => Reply::no(format!("{} has no op {op}", vc.call.api)),
         }
-        let (need, why) = match need_missing {
-            Some(n) => (n, "may_fetch: the chain does not hold the needs of any view with this bundle".to_string()),
-            None => ("fe.serve:fetch".into(), "no bundle with that hash here".into()),
-        };
-        Reply::gate(Refused { need, chain: vc.chain.id(), node: self.gate.node.clone(), why })
     }
 
     fn explain(&mut self, vc: &VisitorCall, eff: &fe_chain::Effective, now: u64) -> Reply {
-        let Some(m) = &self.manifest else { return Reply::no("fe.explain is on the door node") };
+        let Some(m) = &self.compose else { return Reply::no("fe.explain is on the door node") };
         let views = m
             .live(now)
             .into_iter()
             .map(|e| {
-                let (held, missing) = e.body.needs.iter().cloned().partition(|n| holds(&eff.rights, n));
+                let (held, missing) = std::iter::once(e.body.render.clone()).chain(e.body.needs.iter().cloned()).partition(|n| holds(&eff.rights, n));
                 ViewVerdict { view: e.body.view, api: e.body.api, held, missing, holders: e.holders.into_iter().map(|h| h.node).collect() }
             })
             .collect();
@@ -390,13 +446,14 @@ impl Host {
                 let nodes = self.cfg.nodes.iter().map(|m| NodeInfo { name: m.name.clone(), class: m.class.clone(), key: m.key.clone(), fp: fingerprint(&m.key) }).collect();
                 (Reply::ok(to(&Welcome { root: self.cfg.root.clone(), nodes, door: self.cfg.door.clone(), mode: self.cfg.mode.clone() })), None)
             }
-            "Join" => {
+            "Join" | "Anon" => {
                 let node = self.cfg.name.clone();
                 let door = self.cfg.door.clone();
                 let nodes = self.nodes.clone();
                 let caller = Caller::Node("browser".into());
                 let Some(v) = self.visitor.as_mut() else { return (Reply::no("no issuer on this node"), None) };
-                let r = match parse(body).and_then(|j| v.join(j, &mut Cx { now, node: &node, caller: &caller, peers: &[], nodes: &nodes, door: &door, out })) {
+                let mut cx = Cx { now, node: &node, caller: &caller, peers: &[], nodes: &nodes, door: &door, out };
+                let r = match parse(body).and_then(|j| if op == "Join" { v.join(j, &mut cx) } else { v.anon(j, &mut cx) }) {
                     Ok(j) => Reply::ok(to(&j)),
                     Err(e) => Reply::no(e),
                 };
@@ -445,7 +502,7 @@ impl Host {
                 let f = Forward { to: r.to.clone(), api: r.vc.call.api.clone(), op: r.vc.call.op.clone(), body: to(&r.vc) };
                 (Reply::ok(json!({"forwarded": r.to})), Some(f))
             }
-            _ => (Reply::no(format!("fe.door has no op {op}")), None),
+            _ => (Reply::no(format!("http.serve has no op {op}")), None),
         }
     }
 
@@ -506,9 +563,31 @@ impl Host {
         if sha.len() != 64 {
             return Err("a bundle or its sha256 is needed".into());
         }
+        let mut parts = BTreeMap::new();
+        let mut part_names = vec![];
+        if let Some(m) = b["parts_b64"].as_object() {
+            for (path, x) in m {
+                let bytes = base64::engine::general_purpose::STANDARD.decode(x.as_str().unwrap_or("")).map_err(|e| e.to_string())?;
+                let sha = fe_chain::sha256_hex(&bytes);
+                part_names.push((path.clone(), sha.clone()));
+                parts.insert(sha, Some(bytes));
+            }
+        }
+        if let Some(m) = b["parts_sha"].as_object() {
+            for (path, x) in m {
+                let sha = x.as_str().unwrap_or("").to_string();
+                if sha.len() != 64 {
+                    return Err(format!("part {path}: not a sha256"));
+                }
+                part_names.push((path.clone(), sha.clone()));
+                parts.insert(sha, None);
+            }
+        }
+        part_names.sort();
         let commit = if self.cfg.commit.is_empty() { "0".repeat(40) } else { self.cfg.commit.clone() };
         let dir = s("dir");
-        let bundle_ref = format!("repo:live-frontend/cells/{dir}/ui@{commit} sha256:{sha}");
+        let path = if s("ref_path").is_empty() { format!("cells/{dir}/ui") } else { s("ref_path") };
+        let bundle_ref = format!("repo:live-frontend/{path}@{commit} sha256:{sha}");
         ce_ref_id::Ref::parse(&bundle_ref).map_err(|e| format!("bundle ref {bundle_ref}: {e:?}"))?;
         let strs = |k: &str| -> Vec<String> { v[k].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default() };
         let props = v["props"].as_str().unwrap_or("()").to_string();
@@ -522,22 +601,23 @@ impl Host {
         let api = format!("{api_name}@{major}");
         let body = EntryBody {
             view: view.clone(), instance: instance.clone(), api: api.clone(), version: version.clone(),
-            schema: desc["schema"].as_str().unwrap_or("").into(), bundle: sha.clone(), bundle_ref,
+            schema: desc["schema"].as_str().unwrap_or("").into(), render: v["render"].as_str().unwrap_or("").into(),
+            bundle: sha.clone(), bundle_ref, parts: part_names,
             needs: strs("needs"), place: v["place"].as_str().unwrap_or("main").into(), data: strs("data"), tries: strs("tries"),
             streams: strs("streams"), props, props_fields, state: v["state"].as_str().unwrap_or("()").into(),
-            slots: v["slots"].as_array().map(|a| a.iter().map(|x| SlotDecl { name: x["name"].as_str().unwrap_or("").into(), view: x["view"].as_str().unwrap_or("").into(), props: x["props"].as_str().unwrap_or("").into() }).collect()).unwrap_or_default(),
+            slots: v["slots"].as_array().map(|a| a.iter().map(|x| SlotDecl { name: x["name"].as_str().unwrap_or("").into(), render: x["render"].as_str().unwrap_or("").into(), props: x["props"].as_str().unwrap_or("").into() }).collect()).unwrap_or_default(),
             speaks: strs("speaks"), hears: strs("hears"),
             supersedes: b["supersedes"].as_str().map(String::from),
             until: b["until_ms"].as_u64().map(|d| now + d),
             label: s("label"),
         };
-        if !api_name.starts_with("fe.") {
+        if !api_name.starts_with("fe.") && registry::make_cell(&api_name).is_some() {
             let c = self.cells.entry(api_name.clone()).or_insert_with(|| registry::make_cell(&api_name).expect("a cell for every contract"));
             c.serve(major, minor);
         }
         let peers: Vec<String> = b["peers"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
         self.installs.retain(|(v, i, a), _| !(*v == view && *i == instance && *a == api));
-        self.installs.insert((view.clone(), instance, api), Install { body: body.clone(), peers, bytes });
+        self.installs.insert((view.clone(), instance, api), Install { body: body.clone(), peers, bytes, parts });
         self.event("Installed", &view, json!({"version": version, "bundle": &sha[..12], "needs": body.needs}), now, out);
         self.announce(&body, out);
         Ok(json!({"bundle": sha}))
@@ -545,7 +625,7 @@ impl Host {
 
     fn announce(&self, body: &EntryBody, out: &mut Vec<Out>) {
         let a = Signed { body: body.clone(), node: self.cfg.name.clone(), sig: self.id.sign(&entry_bytes(body)) };
-        out.push(Out { to: self.cfg.door.clone(), api: "fe.manifest@1".into(), op: "Announce".into(), body: to(&a), tag: None });
+        out.push(Out { to: self.cfg.door.clone(), api: "page.compose@1".into(), op: "Announce".into(), body: to(&a), tag: None });
     }
 
     fn tick(&mut self, now: u64, out: &mut Vec<Out>) {
@@ -572,7 +652,7 @@ impl Host {
         let caller = Caller::Node(self.cfg.name.clone());
         let (node, door) = (self.cfg.name.clone(), self.cfg.door.clone());
         let nodes: Vec<String> = self.nodes.iter().filter(|n| **n != node).cloned().collect();
-        if let Some(m) = self.manifest.as_mut() {
+        if let Some(m) = self.compose.as_mut() {
             m.tick(&mut Cx { now, node: &node, caller: &caller, peers: &[], nodes: &nodes, door: &door, out });
         }
         let names: Vec<String> = self.cells.keys().cloned().collect();
@@ -584,8 +664,26 @@ impl Host {
         }
     }
 
+    /// For `http.serve` and tests: the tree `page.compose` answers a chain with `rights`.
+    pub fn tree(&self, rights: &[String], now: u64) -> Vec<fe_runtime::api::compose::Entry> {
+        self.compose.as_ref().map(|c| c.tree(rights, now)).unwrap_or_default()
+    }
+
     /// For tests and the page: the door node's history.
     pub fn history_len(&self) -> usize {
         self.history.as_ref().map(|h| h.events.len()).unwrap_or(0)
     }
+}
+
+/// The static fragment of a view for first paint and for readers without scripts: the panel frame the shell
+/// would draw, with the cell's own text inside when it has one.
+pub fn html_fragment(e: &EntryBody, inner: Option<&str>) -> String {
+    let esc = |x: &str| x.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;");
+    let api = e.api.split('@').next().unwrap_or("");
+    let inst = if e.instance == "main" { String::new() } else { format!(" · {}", esc(&e.instance)) };
+    format!(
+        "<section class=\"cellpanel\" data-view=\"{v}\" data-render=\"{r}\"><div class=\"cellhead\">{v}{inst} · {api}@{ver} · sha256 {sha}</div><div class=\"cellbody\">{body}</div></section>",
+        v = esc(&e.view), r = esc(&e.render), ver = esc(&e.version), sha = &e.bundle[..10.min(e.bundle.len())],
+        body = inner.map(String::from).unwrap_or_else(|| format!("<p>{}</p>", esc(if e.label.is_empty() { &e.view } else { &e.label })))
+    )
 }

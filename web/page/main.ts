@@ -74,12 +74,14 @@ async function main(): Promise<void> {
       const ul = el('ul');
       const here = shell.entries.filter((e) => e.holders.some((h) => h.node === n.name));
       for (const e of here) ul.append(el('li', '', `${e.body.view}${e.body.instance !== 'main' ? ':' + e.body.instance : ''} ${e.body.api.split('@')[0]}@${e.body.version}`));
-      if (n.name === 'd') ul.append(el('li', '', 'fe.door fe.manifest fe.visitor fe.history fe.explain'));
+      if (n.name === 'd') ul.append(el('li', '', 'http.serve page.compose fe.shell fe.visitor fe.history fe.explain'));
       if (up[n.name] === false) ul.append(el('li', 'bad', 'stopped'));
       d.append(ul);
       box.append(d);
     }
     $('empty').style.display = shell.mounted.size ? 'none' : '';
+    // the first paint (Render.Html of each public view, inlined by http.serve) gives way to the live frames
+    if (shell.mounted.size) document.getElementById('first-paint')?.remove();
     $('chain').textContent = shell.chainId ? `chain ${shell.chainId} · key ${shell.id?.pub.slice(0, 10)}` : 'no chain';
   };
   shell.onChange = drawNodes;
@@ -125,7 +127,9 @@ async function main(): Promise<void> {
   }
   button('Start the faults cell on b', () => ctl.action('start-faults'));
   button('Deploy notes 1.1, node by node', () => ctl.action('deploy-notes-1.1'));
-  button('Deploy notes 2.0 beside 1', () => ctl.action('deploy-notes-2.0'));
+  button('Deploy notes 1.2 (render ops)', () => ctl.action('deploy-notes-1.2'));
+  button('Move trend.chart to node a', () => ctl.action('move-trend'));
+  button('Deploy notes 2.1 beside 1', () => ctl.action('deploy-notes-2.1'));
   button('Change one byte of the notes bundle on c', () => ctl.action('tamper-c'));
   button('Stop node b', () => ctl.action('stop-b'));
   button('Start node b', () => ctl.action('start-b'));

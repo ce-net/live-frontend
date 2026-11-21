@@ -37,6 +37,7 @@ status-cell = { path = "cells/status/cell" }
 trend-cell = { path = "cells/trend/cell" }
 faults-cell = { path = "cells/faults/cell" }
 ops-cell = { path = "cells/ops/cell" }
+http-serve-cell = { path = "cells/http/cell" }
 systems-cell = { path = "cells/systems/cell" }
 
 [profile.dev]

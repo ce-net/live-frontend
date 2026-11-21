@@ -3,7 +3,7 @@
 //! applied once on every replica. Rows follow the chain's row caveat (`sandbox == <visitor>`): a visitor reads
 //! and writes only its own.
 use fe_runtime::{parse, to, Caller, Cell, Cx};
-use notes_api::{v1_1, v2_0};
+use notes_api::{v1_1, v2_1};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -49,7 +49,7 @@ impl Notes {
     }
     fn out(&self, major: u32, n: &v1_1::Note) -> Value {
         match (major, self.minor.get(&1).copied().unwrap_or(0)) {
-            (2, _) => to(&v2_0::Note { id: n.id.clone(), text: n.text.clone(), sandbox: n.sandbox.clone(), seq: n.seq, rgb: n.colour.as_deref().and_then(name_to_rgb) }),
+            (2, _) => to(&v2_1::Note { id: n.id.clone(), text: n.text.clone(), sandbox: n.sandbox.clone(), seq: n.seq, rgb: n.colour.as_deref().and_then(name_to_rgb) }),
             (_, 0) => json!({"id": n.id, "text": n.text, "sandbox": n.sandbox, "seq": n.seq}),
             _ => to(n),
         }
@@ -103,7 +103,7 @@ impl Cell for Notes {
             }
             "Put" => {
                 let (op_id, id, text, colour) = if major == 2 {
-                    let p: v2_0::PutReq = parse(body)?;
+                    let p: v2_1::PutReq = parse(body)?;
                     (p.op_id, p.note.id, p.note.text, p.note.rgb.map(rgb_to_name))
                 } else {
                     let p: v1_1::PutReq = parse(body)?;

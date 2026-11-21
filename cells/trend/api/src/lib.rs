@@ -1,6 +1,6 @@
 //! trend: small time series (calls per node, notes written), embedded by other views through a typed slot.
 lf_contract::contract! {
-    api Trend = "trend", version 1, minor 0;
+    api Trend = "trend", version 1, minor 1;
     types {
         pub struct TrendProps { pub series: String }
         pub struct Points { pub series: String, pub lines: Vec<(String, Vec<(u64, f64)>)> }
@@ -11,7 +11,7 @@ lf_contract::contract! {
         2 => Push(Sample) -> (), needs "trend:push";
     }
     ui {
-        view "trend.chart" place "slot" {
+        view "trend.chart" place "slot" render "trend:render:chart" {
             needs ["trend:read"]; data [Series]; tries []; streams [];
             props "TrendProps"; state "()"; slots []; speaks []; hears [];
         }

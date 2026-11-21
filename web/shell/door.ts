@@ -1,4 +1,4 @@
-// The one way the page reaches the nodes: frames to fe.door. Over HTTP to a real door (local processes or live
+// The one way the page reaches the nodes: frames to the http.serve cell. Over HTTP to a real door (local processes or live
 // nodes), or over postMessage to the door node of the in-browser sim.
 export interface DoorReply {
   ok: boolean;

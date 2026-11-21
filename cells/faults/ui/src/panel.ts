@@ -1,7 +1,7 @@
 // faults.panel: a cell that crashes when asked. The shell restarts only this frame and hands back its state.
 import { cell } from '../../../../web/cell-rt';
 import { h } from '../../../../web/vendor/ui-cells/kit/dom';
-import { client } from '../gen/faults_1_0';
+import { client } from '../gen/faults_1_1';
 
 cell((cx) => {
   const api = client(cx);

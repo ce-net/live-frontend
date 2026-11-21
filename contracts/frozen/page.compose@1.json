@@ -1,0 +1,42 @@
+{
+  "api": "page.compose",
+  "major": 1,
+  "minor": 0,
+  "ops": [
+    {
+      "id": 1,
+      "kw": [],
+      "name": "Announce",
+      "req": "Signed",
+      "resp": "u64",
+      "right": "page.compose:announce"
+    },
+    {
+      "id": 2,
+      "kw": [],
+      "name": "Resolve",
+      "req": "()",
+      "resp": "Tree",
+      "right": "page.compose:resolve"
+    },
+    {
+      "id": 3,
+      "kw": [],
+      "name": "Report",
+      "req": "Complaint",
+      "resp": "()",
+      "right": "page.compose:report"
+    },
+    {
+      "id": 4,
+      "kw": [],
+      "name": "All",
+      "req": "()",
+      "resp": "Vec<Entry>",
+      "right": "page.compose:all"
+    }
+  ],
+  "schema": "44c592856b0f04b4",
+  "types": "pub struct SlotDecl\n{ pub name: String, pub render: String, pub props: String }\npub struct EntryBody\n{\n    pub view: String, pub instance: String, pub api: String, pub version:\n    String, pub schema: String, pub render: String, pub bundle: String, pub\n    bundle_ref: String, pub parts: Vec<(String, String)>, pub needs:\n    Vec<String>, pub place: String, pub data: Vec<String>, pub tries:\n    Vec<String>, pub streams: Vec<String>, pub props: String, pub\n    props_fields: Vec<(String, String)>, pub state: String, pub slots:\n    Vec<SlotDecl>, pub speaks: Vec<String>, pub hears: Vec<String>, pub\n    supersedes: Option<String>, pub until: Option<u64>, pub label: String,\n} pub struct Signed { pub body: EntryBody, pub node: String, pub sig: String }\npub struct Holder { pub node: String, pub sig: String, pub lease_until: u64 }\npub struct Entry { pub body: EntryBody, pub holders: Vec<Holder> }\npub struct Tree { pub seq: u64, pub entries: Vec<Entry> }\npub struct Complaint\n{ pub view: String, pub bundle: String, pub holder: String, pub why: String }",
+  "views": []
+}

@@ -1,7 +1,7 @@
 // trend.chart: a small line chart. It only ever lives in another view's typed slot, with typed props.
 import { cell } from '../../../../web/cell-rt';
 import { h } from '../../../../web/vendor/ui-cells/kit/dom';
-import { client, type Points, type TrendProps } from '../gen/trend_1_0';
+import { client, type Points, type TrendProps } from '../gen/trend_1_1';
 
 const NS = 'http://www.w3.org/2000/svg';
 const COLS = ['var(--acc)', 'var(--ok)', '#3b6fd8', '#8a8f87'];

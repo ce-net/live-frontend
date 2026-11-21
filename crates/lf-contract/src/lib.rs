@@ -10,7 +10,8 @@ use wire_lite::{Api, OpShape};
 #[derive(Debug, Clone, Copy)]
 pub struct Slot {
     pub name: &'static str,
-    pub view: &'static str,
+    /// The render capability that fills the slot (`trend:render:chart`): any cell offering it with these props can.
+    pub render: &'static str,
     pub props: &'static str,
 }
 
@@ -18,6 +19,9 @@ pub struct Slot {
 pub struct View {
     pub name: &'static str,
     pub place: &'static str,
+    /// `<api>:render:<view>`: the one right under which the view's `Render.Entry`, `Render.Bundle` and
+    /// `Render.Html` ops are called. The view is an op of its own backend cell.
+    pub render: &'static str,
     pub needs: &'static [&'static str],
     pub data: &'static [&'static str],
     pub tries: &'static [&'static str],
@@ -94,11 +98,72 @@ const fn needs_cover(needs: &[&str], right: &str) -> bool {
     false
 }
 
+const fn starts_with(s: &str, p: &str) -> bool {
+    let (s, p) = (s.as_bytes(), p.as_bytes());
+    if s.len() < p.len() {
+        return false;
+    }
+    let mut i = 0;
+    while i < p.len() {
+        if s[i] != p[i] {
+            return false;
+        }
+        i += 1;
+    }
+    true
+}
+
+/// `true` when `right` is `<api>:render:<something>`.
+pub const fn is_render_of(api: &str, right: &str) -> bool {
+    let (a, r) = (api.as_bytes(), right.as_bytes());
+    let tail = b":render:";
+    if r.len() <= a.len() + tail.len() || !starts_with(right, api) {
+        return false;
+    }
+    let mut i = 0;
+    while i < tail.len() {
+        if r[a.len() + i] != tail[i] {
+            return false;
+        }
+        i += 1;
+    }
+    true
+}
+
+/// The three ops every view expands to, in this order, all under the view's `render` right.
+pub const RENDER_OPS: [(&str, &str, &str); 3] = [
+    ("Render.Entry", "ViewReq", "Signed"),
+    ("Render.Bundle", "ByHash", "Bundle"),
+    ("Render.Html", "HtmlReq", "Html"),
+];
+
 /// The compile-time check of the `ui { }` block. Called in a `const _` by `contract!`.
-pub const fn check_views(ops: &[OpShape], rights: &[&str], views: &[View]) {
+pub const fn check_views(api: &str, ops: &[OpShape], rights: &[&str], views: &[View]) {
     let mut v = 0;
     while v < views.len() {
         let view = &views[v];
+        if !is_render_of(api, view.render) {
+            panic!("contract!: a view's render right must be <api>:render:<view>");
+        }
+        if needs_cover(view.needs, view.render) {
+            panic!("contract!: the render right is the view's own op right; it does not go in needs");
+        }
+        let mut s = 0;
+        while s < view.slots.len() {
+            let r = view.slots[s].render.as_bytes();
+            let mut found = false;
+            let mut i = 0;
+            while i + 8 <= r.len() {
+                if r[i] == b':' && r[i + 1] == b'r' && r[i + 2] == b'e' && r[i + 3] == b'n' && r[i + 4] == b'd' && r[i + 5] == b'e' && r[i + 6] == b'r' && r[i + 7] == b':' {
+                    found = true;
+                }
+                i += 1;
+            }
+            if !found {
+                panic!("contract!: a slot names a render capability (<api>:render:<view>)");
+            }
+            s += 1;
+        }
         let mut k = 0;
         while k < view.data.len() + view.streams.len() {
             let op = if k < view.data.len() { view.data[k] } else { view.streams[k - view.data.len()] };
@@ -137,12 +202,19 @@ pub fn descriptor<C: Contract>() -> serde_json::Value {
     let views: Vec<_> = C::VIEWS
         .iter()
         .map(|v| {
-            json!({"name": v.name, "place": v.place, "needs": v.needs, "data": v.data, "tries": v.tries, "streams": v.streams,
+            json!({"name": v.name, "place": v.place, "render": v.render, "needs": v.needs, "data": v.data, "tries": v.tries, "streams": v.streams,
                 "props": v.props, "state": v.state,
-                "slots": v.slots.iter().map(|s| json!({"name": s.name, "view": s.view, "props": s.props})).collect::<Vec<_>>(),
+                "slots": v.slots.iter().map(|s| json!({"name": s.name, "render": s.render, "props": s.props})).collect::<Vec<_>>(),
                 "speaks": v.speaks, "hears": v.hears})
         })
         .collect();
+    // Each view's render ops follow the contract's own ops (ids from 200, three per view).
+    let mut ops = ops;
+    for (i, v) in C::VIEWS.iter().enumerate() {
+        for (k, (name, req, resp)) in RENDER_OPS.iter().enumerate() {
+            ops.push(json!({"id": 200 + 3 * i + k, "name": format!("{name}/{}", v.name), "req": req, "resp": resp, "right": v.render, "kw": []}));
+        }
+    }
     json!({"api": C::NAME, "major": C::VERSION, "minor": C::MINOR, "schema": format!("{:016x}", C::SCHEMA),
         "types": C::TYPES, "ops": ops, "views": views})
 }
@@ -154,14 +226,14 @@ macro_rules! contract {
         types { $($ty:item)* }
         ops { $( $id:literal => $op:ident ( $req:ty ) -> $resp:ty , needs $right:literal $(, $kw:ident)* ; )* }
         ui { $(
-            view $vname:literal place $place:literal {
+            view $vname:literal place $place:literal render $render:literal {
                 needs [$($need:literal),* $(,)?];
                 data [$($data:ident),* $(,)?];
                 tries [$($try:ident),* $(,)?];
                 streams [$($stream:ident),* $(,)?];
                 props $props:literal;
                 state $state:literal;
-                slots [$($sname:ident : $sview:literal ($sprops:literal)),* $(,)?];
+                slots [$($sname:ident : render $srender:literal ($sprops:literal)),* $(,)?];
                 speaks [$($speak:literal),* $(,)?];
                 hears [$($hear:literal),* $(,)?];
             }
@@ -177,13 +249,13 @@ macro_rules! contract {
             const TYPES: &'static str = stringify!($($ty)*);
             const VIEWS: &'static [$crate::View] = &[$(
                 $crate::View {
-                    name: $vname, place: $place,
+                    name: $vname, place: $place, render: $render,
                     needs: &[$($need),*],
                     data: &[$(stringify!($data)),*],
                     tries: &[$(stringify!($try)),*],
                     streams: &[$(stringify!($stream)),*],
                     props: $props, state: $state,
-                    slots: &[$($crate::Slot { name: stringify!($sname), view: $sview, props: $sprops }),*],
+                    slots: &[$($crate::Slot { name: stringify!($sname), render: $srender, props: $sprops }),*],
                     speaks: &[$($speak),*],
                     hears: &[$($hear),*],
                 }
@@ -191,6 +263,7 @@ macro_rules! contract {
             const KW: &'static [(&'static str, &'static [&'static str])] = &[$( (stringify!($op), &[$(stringify!($kw)),*]) ),*];
         }
         const _: () = $crate::check_views(
+            $name,
             <$api as $crate::wire_lite::Api>::OPS,
             <$api as $crate::wire_lite::Api>::RIGHTS,
             <$api as $crate::Contract>::VIEWS,
@@ -207,6 +280,14 @@ mod tests {
         assert!(covers("notes:read", "notes:read"));
         assert!(!covers("notes:*", "notesx:read"));
         assert!(!covers("notes:read", "notes:write"));
+    }
+    #[test]
+    fn render_rights() {
+        assert!(is_render_of("notes", "notes:render:board"));
+        assert!(is_render_of("fe.history", "fe.history:render:view"));
+        assert!(!is_render_of("notes", "trend:render:chart"));
+        assert!(!is_render_of("notes", "notes:render:"));
+        assert!(!is_render_of("notes", "notes:read"));
     }
 }
 

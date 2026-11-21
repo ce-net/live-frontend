@@ -15,6 +15,8 @@ base64.workspace = true
 lf-contract.workspace = true
 fe-chain.workspace = true
 fe-host.workspace = true
+fe-runtime.workspace = true
+http-serve-cell.workspace = true
 sim-mesh.workspace = true
 live-proof.workspace = true
 ed25519-dalek = { version = "2" }

@@ -1,7 +1,7 @@
 {
   "api": "ops",
   "major": 1,
-  "minor": 0,
+  "minor": 1,
   "ops": [
     {
       "id": 1,
@@ -10,6 +10,30 @@
       "req": "()",
       "resp": "OpsBoard",
       "right": "ops:read"
+    },
+    {
+      "id": 200,
+      "kw": [],
+      "name": "Render.Entry/ops.panel",
+      "req": "ViewReq",
+      "resp": "Signed",
+      "right": "ops:render:panel"
+    },
+    {
+      "id": 201,
+      "kw": [],
+      "name": "Render.Bundle/ops.panel",
+      "req": "ByHash",
+      "resp": "Bundle",
+      "right": "ops:render:panel"
+    },
+    {
+      "id": 202,
+      "kw": [],
+      "name": "Render.Html/ops.panel",
+      "req": "HtmlReq",
+      "resp": "Html",
+      "right": "ops:render:panel"
     }
   ],
   "schema": "80b54a52f6c7fc32",
@@ -26,6 +50,7 @@
       ],
       "place": "main",
       "props": "()",
+      "render": "ops:render:panel",
       "slots": [],
       "speaks": [],
       "state": "()",

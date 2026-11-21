@@ -88,7 +88,7 @@ export class SimNet implements Door {
   }
 
   async req(op: string, body: unknown): Promise<DoorReply> {
-    const o = await this.input('d', { kind: 'frame', from: 'browser', api: 'fe.door@1', op, body });
+    const o = await this.input('d', { kind: 'frame', from: 'browser', api: 'http.serve@1', op, body });
     if (!o) return { ok: false, body: null, transport: 'door: no answer' };
     this.route('d', o.out);
     if (!o.forward) return { ...(o.reply as DoorReply), node: 'd' };

@@ -17,6 +17,7 @@ body{min-height:100vh}
 .controls button{text-align:left;font:500 12px var(--sans);padding:6px 8px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);cursor:pointer}
 .controls button:hover{background:var(--hover)}.controls button:disabled{opacity:.5;cursor:default}
 .said{font:11px/1.4 var(--mono);color:var(--ink-2);margin-top:8px;white-space:pre-wrap;word-break:break-word}
+.firstpaint{display:grid;gap:12px;margin-bottom:12px;opacity:.8}.firstpaint:empty{display:none}
 .empty{border:1px dashed var(--line-2);border-radius:var(--r);padding:28px;text-align:center;color:var(--ink-2);margin-bottom:12px}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:12px}
 .mainr{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}

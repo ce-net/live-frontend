@@ -1,8 +1,11 @@
-//! `fe-node --config a.json --mesh mesh.json [--log inputs/a.jsonl] [--http 127.0.0.1:21200 --static web/dist]`
+//! `fe-node --config a.json --mesh mesh.json [--log inputs/a.jsonl] [--http 127.0.0.1:21200 --shell web/dist]`
 //!
 //! One node: the host behind a sim-mesh door (every frame signed by a member's key, ctl frames by the run's root).
 //! Each input is logged with the sha256 of its output, so `cargo cell verify` and the page can re-execute the log.
-mod http;
+//! With `--shell` the node installs the `fe.shell` cell (by hash; the bytes go to this node's content store);
+//! with `--http` it runs the one `http.serve` cell. This process opens no listener of its own.
+use http_serve_cell::{server, HttpServe, Wire};
+use std::collections::BTreeMap;
 
 use fe_host::{Config, Host, Input, Output};
 use serde_json::{json, Value};
@@ -14,6 +17,7 @@ use std::time::Duration;
 
 struct Node {
     host: Mutex<Host>,
+    store: Mutex<BTreeMap<String, Vec<u8>>>,
     log: Option<Mutex<std::fs::File>>,
     mesh: Arc<Mesh>,
     me: String,
@@ -82,7 +86,7 @@ fn main() {
         let _ = writeln!(f, "{{\"boot\":{}}}", now());
         Mutex::new(f)
     });
-    let node = Arc::new(Node { host: Mutex::new(Host::new(cfg).expect("config")), log, mesh: mesh.clone(), me: me.clone() });
+    let node = Arc::new(Node { host: Mutex::new(Host::new(cfg).expect("config")), store: Mutex::new(BTreeMap::new()), log, mesh: mesh.clone(), me: me.clone() });
 
     let n = node.clone();
     let parent = std::os::unix::process::parent_id();
@@ -94,22 +98,24 @@ fn main() {
         n.input(Input::Tick { now: now() });
     });
 
+    if let Some(dist) = arg(&args, "--shell") {
+        // bundles/ is the in-browser sim operator's input; a page on real nodes gets every view through Render.Bundle
+        let skip: Vec<&str> = vec!["bundles/"];
+        let (body, store) = http_serve_cell::shell_install(std::path::Path::new(&dist), &skip).expect("--shell: a built web/dist");
+        node.store.lock().unwrap().extend(store);
+        let o = node.input(Input::Frame { from: me.clone(), api: "sim.ctl".into(), op: "Install".into(), body, now: now() });
+        if let Some(r) = o.reply {
+            if !r.ok {
+                eprintln!("fe.shell install refused: {:?}", r.refused);
+            }
+        }
+    }
+
     if let Some(addr) = arg(&args, "--http") {
-        let root = std::path::PathBuf::from(arg(&args, "--static").unwrap_or_else(|| "web/dist".into()));
-        let n = node.clone();
-        std::thread::spawn(move || {
-            http::serve(&addr, move |req| {
-                if req.method == "POST" && req.path == "/door" {
-                    let v: Value = serde_json::from_slice(&req.body).unwrap_or_default();
-                    return http::Resp::json(&door(&n, v["op"].as_str().unwrap_or(""), v["body"].clone()));
-                }
-                if req.path == "/door.json" {
-                    let live = std::env::var("LF_MODE").map(|m| m == "live").unwrap_or(false);
-                    return http::Resp::json(&json!({"mode": if live { "live" } else { "local" }, "door": "/door"}));
-                }
-                http::file(&root, &req.path)
-            })
-        });
+        let route = arg(&args, "--route").unwrap_or_else(|| "/".into());
+        let seed: [u8; 32] = Sha256::digest(format!("http.serve:{me}:{}", now()).as_bytes()).into();
+        let cell = Arc::new(HttpServe::new(NodeWire(node.clone()), &route, seed));
+        std::thread::spawn(move || server::serve(&addr, move |req| cell.handle(req)));
     }
 
     let n = node.clone();
@@ -120,9 +126,22 @@ fn main() {
     });
 }
 
+struct NodeWire(Arc<Node>);
+impl Wire for NodeWire {
+    fn frame(&self, op: &str, body: Value) -> Value {
+        door(&self.0, op, body)
+    }
+    fn blob(&self, sha256: &str) -> Option<Vec<u8>> {
+        self.0.store.lock().unwrap().get(sha256).cloned()
+    }
+    fn now(&self) -> u64 {
+        now()
+    }
+}
+
 /// One browser frame: handled by this node, or forwarded to the node it names (the door adds nothing).
 fn door(n: &Arc<Node>, op: &str, body: Value) -> Value {
-    let o = n.input(Input::Frame { from: "browser".into(), api: "fe.door@1".into(), op: op.into(), body, now: now() });
+    let o = n.input(Input::Frame { from: "browser".into(), api: "http.serve@1".into(), op: op.into(), body, now: now() });
     let r = o.reply.clone().unwrap();
     match o.forward {
         None => json!({"ok": r.ok, "body": r.body, "refused": r.refused, "node": n.me}),
